@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>海南驻点销售管理看板 - 广州赛通科技</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<style>
+:root {
+  --bg: #f0f2f5; --card: #fff; --dark: #1a1a2e; --primary: #16213e; --accent: #0f3460;
+  --green: #059669; --yellow: #d97706; --red: #dc2626; --blue: #2563eb;
+  --gray: #6b7280; --border: #e5e7eb; --text: #1f2937; --text2: #6b7280;
+  --radius: 10px; --shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; background: var(--bg); color: var(--text); }
+.header { background: var(--dark); color: #fff; padding: 16px 28px; display:flex; justify-content:space-between; align-items:center; }
+.header h1 { font-size: 20px; }
+.header .sub { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+.header .actions { display:flex; gap:8px; }
+.btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: .2s; }
+.btn-ghost { background: rgba(255,255,255,.1); color: #fff; }
+.btn-ghost:hover { background: rgba(255,255,255,.2); }
+.btn-primary { background: var(--blue); color: #fff; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-green { background: var(--green); color: #fff; }
+.btn-green:hover { background: #047857; }
+.btn-red { background: var(--red); color: #fff; }
+.btn-red:hover { background: #b91c1c; }
+.container { max-width: 1400px; margin: 0 auto; padding: 20px 24px; }
+/* KPI Cards */
+.kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 20px; }
+.kpi-card { background: var(--card); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow); }
+.kpi-card .label { font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; }
+.kpi-card .value { font-size: 32px; font-weight: 700; margin: 6px 0; }
+.kpi-card .sub { font-size: 12px; color: var(--text2); }
+.kpi-card.accent .value { color: var(--accent); }
+.kpi-card.green .value { color: var(--green); }
+.kpi-card.red .value { color: var(--red); }
+.kpi-card.blue .value { color: var(--blue); }
+/* Charts */
+.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+.chart-card { background: var(--card); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow); }
+.chart-card h3 { font-size: 14px; color: var(--text2); margin-bottom: 12px; font-weight: 500; }
+.chart-wrap { position: relative; height: 320px; }
+.chart-wrap canvas { width: 100% !important; height: 100% !important; }
+/* Tabs */
+.tabs { display: flex; gap: 2px; margin-bottom: 0; }
+.tab { padding: 10px 20px; background: #e5e7eb; border: none; cursor: pointer; font-size: 13px; font-weight: 500; border-radius: 8px 8px 0 0; transition: .2s; }
+.tab.active { background: var(--card); color: var(--blue); }
+.tab:hover:not(.active) { background: #d1d5db; }
+.tab-content { display: none; background: var(--card); border-radius: 0 var(--radius) var(--radius) var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.tab-content.active { display: block; }
+/* Tables */
+.toolbar { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); gap: 12px; }
+.toolbar .info { font-size: 12px; color: var(--text2); }
+.table-wrap { overflow-x: auto; max-height: 500px; overflow-y: auto; transition: max-height .3s; }
+.table-wrap.expanded { max-height: none; overflow-y: visible; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead { position: sticky; top: 0; z-index: 2; }
+th { background: var(--primary); color: #fff; padding: 10px 8px; text-align: left; font-weight: 500; white-space: nowrap; }
+td { padding: 8px; border-bottom: 1px solid var(--border); }
+tr:hover td { background: #f9fafb; }
+td[contenteditable="true"] { outline: 2px solid transparent; transition: .15s; cursor: text; }
+td select { min-width: 120px; max-width: 140px; font-family: inherit; }
+/* Stage badges */
+.badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; color: #fff; white-space: nowrap; }
+.badge-fea { background: var(--red); }
+.badge-des { background: var(--yellow); }
+.badge-bid { background: var(--blue); }
+.badge-win { background: #0891b2; }
+.badge-quote { background: #ea580c; }
+.badge-contract { background: #7c3aed; }
+.badge-imp { background: var(--green); }
+.badge-accept { background: var(--accent); }
+.badge-done { background: #a21caf; }
+.badge-lost { background: var(--gray); }
+/* Type badges */
+.tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+.tag-party { background: #fee2e2; color: var(--red); }
+.tag-design { background: #fef3c7; color: #92400e; }
+.tag-integrator { background: #dbeafe; color: #1d4ed8; }
+.tag-irrigation { background: #d1fae5; color: #047857; }
+.tag-research { background: #e0e7ff; color: #3730a3; }
+/* Financial summary row */
+.fin-summary { display: flex; gap: 20px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.fin-item { display: flex; flex-direction: column; }
+.fin-item .fl { font-size: 11px; color: var(--text2); }
+.fin-item .fv { font-size: 18px; font-weight: 700; }
+.fin-item .fv.g { color: var(--green); }
+.fin-item .fv.b { color: var(--blue); }
+.fin-item .fv.accent { color: var(--accent); }
+.fin-item .fv.r { color: var(--red); }
+/* Mobile */
+@media (max-width: 900px) {
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .chart-grid { grid-template-columns: 1fr; }
+  .header { flex-direction: column; gap: 10px; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>海南驻点销售管理看板</h1>
+    <div class="sub">驻点人员：黄宏定 | 区域：海南 | 广州赛通科技</div>
+  </div>
+  <div class="actions">
+    <button class="btn btn-green" onclick="addProject()">+ 新增项目</button>
+    <button class="btn btn-ghost" onclick="saveAll()">💾 保存</button>
+    <button class="btn btn-ghost" onclick="exportBackup()">📥 导出备份</button>
+    <button class="btn btn-ghost" onclick="importBackup()">📤 恢复备份</button>
+    <button class="btn btn-ghost" onclick="exportCSV()">📋 CSV</button>
+    <button class="btn btn-ghost" style="background:#ea580c;color:#fff;" onclick="exportShareVersion()">📸 导出长图</button>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- KPI Row -->
+  <div class="kpi-grid">
+    <div class="kpi-card blue">
+      <div class="label">项目总数</div>
+      <div class="value" id="kpi-projects">5</div>
+      <div class="sub">跟进中 <b id="kpi-feasibility">1</b> | 实施中 <b id="kpi-implement">2</b> | 完工 <b id="kpi-done">0</b></div>
+    </div>
+    <div class="kpi-card accent">
+      <div class="label">报价总金额（万元）</div>
+      <div class="value" id="kpi-quote">—</div>
+      <div class="sub">已报价项目 <b id="kpi-quoted">0</b> 个</div>
+    </div>
+    <div class="kpi-card accent">
+      <div class="label">合同总金额（万元）</div>
+      <div class="value" id="kpi-contract">—</div>
+      <div class="sub">已签约项目 <b id="kpi-signed">2</b> 个</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="label">已收款项（万元）</div>
+      <div class="value" id="kpi-collected">—</div>
+      <div class="sub">收款率 <b id="kpi-collect-rate">—</b></div>
+    </div>
+    <div class="kpi-card red">
+      <div class="label">应收款项（万元）</div>
+      <div class="value" id="kpi-receivable">—</div>
+      <div class="sub">待收 <b id="kpi-pending">—</b> 笔</div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="chart-grid">
+    <div class="chart-card">
+      <h3>项目阶段分布</h3>
+      <div class="chart-wrap"><canvas id="chartStage"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>财务概览（万元）</h3>
+      <div class="chart-wrap"><canvas id="chartFinance"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('pipeline')">📋 项目Pipeline</button>
+    <button class="tab" onclick="switchTab('clients')">👥 客户管理</button>
+    <button class="tab" onclick="switchTab('weekly')">📊 周度记录</button>
+  </div>
+
+  <!-- Pipeline Tab -->
+  <div id="tab-pipeline" class="tab-content active">
+    <div class="toolbar">
+      <span class="info">💡 双击单元格编辑 | 下拉框选择阶段和信心度 | 修改后自动计算财务数据</span>
+      <div style="display:flex;gap:6px;">
+        <button class="btn" style="padding:5px 12px;font-size:11px;background:#0f3460;color:#fff;" onclick="toggleTableExpand('pipeline-table-wrap', this)">📐 展开全部</button>
+        <button class="btn btn-red" style="padding:5px 12px;font-size:11px;" onclick="deleteProject()">🗑 删除选中行</button>
+      </div>
+    </div>
+    <div class="fin-summary">
+      <div class="fin-item"><span class="fl">报价总金额</span><span class="fv accent" id="fin-quote">0 万</span></div>
+      <div class="fin-item"><span class="fl">合同总金额</span><span class="fv b" id="fin-contract">0 万</span></div>
+      <div class="fin-item"><span class="fl">已收款项</span><span class="fv g" id="fin-collected">0 万</span></div>
+      <div class="fin-item"><span class="fl">应收款项</span><span class="fv r" id="fin-receivable">0 万</span></div>
+      <div class="fin-item"><span class="fl">收款率</span><span class="fv b" id="fin-rate">—</span></div>
+    </div>
+    <div class="table-wrap" id="pipeline-table-wrap">
+      <table id="tbl-pipeline">
+        <thead>
+          <tr>
+            <th style="width:36px"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"></th>
+            <th>序号</th>
+            <th>项目名称</th>
+            <th>阶段</th>
+            <th>报价金额(万)</th>
+            <th>合同金额(万)</th>
+            <th>已收款项(万)</th>
+            <th>应收款项(万)</th>
+            <th>赢单信心</th>
+            <th>预计成交</th>
+            <th>跟进过程</th>
+            <th>卡点/风险</th>
+            <th>关键联系人</th>
+            <th>竞对</th>
+            <th>备注</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Clients Tab -->
+  <div id="tab-clients" class="tab-content">
+    <div class="toolbar">
+      <span class="info">💡 双击单元格编辑 | 客户类型用标签区分 | 下拉选择关系深度/活跃/潜力</span>
+      <div style="display:flex;gap:6px;">
+        <button class="btn" style="padding:5px 12px;font-size:11px;background:#0f3460;color:#fff;" onclick="toggleTableExpand('clients-table-wrap', this)">📐 展开全部</button>
+        <button class="btn btn-green" style="padding:5px 12px;font-size:11px;" onclick="addClient()">+ 新增客户</button>
+      </div>
+    </div>
+    <div class="table-wrap" id="clients-table-wrap">
+      <table id="tbl-clients">
+        <thead>
+          <tr>
+            <th>序号</th>
+            <th>客户名称</th>
+            <th>联系人</th>
+            <th>职位</th>
+            <th>联系方式</th>
+            <th>客户类型</th>
+            <th>关系深度</th>
+            <th>近期活跃</th>
+            <th>商机潜力</th>
+            <th>最近互动</th>
+            <th>互动要点</th>
+            <th>下次跟进</th>
+            <th>关联项目</th>
+            <th>备注</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Weekly Tab -->
+  <div id="tab-weekly" class="tab-content">
+    <div class="toolbar">
+      <span class="info">📊 每周活动量追踪 | 目标：拜访≥8 方案≥2 线索≥2 新联系人≥2</span>
+    </div>
+    <div class="table-wrap">
+      <table id="tbl-weekly">
+        <thead>
+          <tr><th>周次</th><th>日期范围</th><th>拜访次数</th><th>方案/报价</th><th>新线索</th><th>新联系人</th><th>备注</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ========================================
+// DATA STORE (loaded from localStorage)
+// ========================================
+const STORAGE_KEY = 'hainan_sales_dashboard_v4';
+let data = {
+  projects: [],
+  clients: [],
+  weekly: []
+};
+
+const defaultProjects = [
+  {id:1,name:'澄迈县果蔬融合发展乡村振兴建设项目',stage:'可研阶段',quoteAmount:'',contract:'',collected:'',confidence:'',closeMonth:'',followUp:'',blocker:'',contact:'陆总(海垦果蔬集团)',competitor:'',note:'乡村振兴资金'},
+  {id:2,name:'蔬菜半水培栽培技术中试观摩科普基地项目',stage:'设计阶段',quoteAmount:'',contract:'',collected:'',confidence:'',closeMonth:'',followUp:'',blocker:'',contact:'郝志强(智璟工程)',competitor:'',note:''},
+  {id:3,name:'红华农场公司热带高效农业产业种植项目',stage:'实施阶段',quoteAmount:'',contract:'',collected:'',confidence:'—',closeMonth:'',followUp:'',blocker:'',contact:'姚总(海垦建工集团)',competitor:'',note:'已签合同，关注回款'},
+  {id:4,name:'海南农垦金江农场公司红毛丹标准示范基地建设项目',stage:'实施阶段',quoteAmount:'',contract:'',collected:'',confidence:'—',closeMonth:'',followUp:'',blocker:'',contact:'白跃(金垦赛博)',competitor:'',note:'已签合同，标杆项目'},
+  {id:5,name:'海南绿化灌溉项目',stage:'设计阶段',quoteAmount:'',contract:'',collected:'',confidence:'',closeMonth:'',followUp:'',blocker:'',contact:'张总(山河灌溉)',competitor:'',note:'可联动灌溉生态'},
+];
+
+const defaultClients = [
+  {id:1,name:'海南农垦果蔬集团',contact:'陆总',position:'公司副总',phone:'',type:'农垦甲方',depth:'中',active:'是',potential:'高',lastContact:'',notes:'',nextFollow:'',linkedProject:'澄迈果蔬融合',remark:'海垦体系核心甲方'},
+  {id:2,name:'海南农垦建工集团',contact:'姚总',position:'项目经理',phone:'',type:'农垦甲方',depth:'中',active:'是',potential:'高',lastContact:'',notes:'',nextFollow:'',linkedProject:'红华农场',remark:'施工总包方'},
+  {id:3,name:'海南农垦设计院',contact:'林工',position:'农业设计总工',phone:'',type:'设计院',depth:'中',active:'是',potential:'高',lastContact:'',notes:'',nextFollow:'',linkedProject:'多个项目',remark:'项目源头，关键技术决策者'},
+  {id:4,name:'海南智璟工程设计咨询',contact:'郝志强',position:'公司老总',phone:'',type:'设计院',depth:'中',active:'是',potential:'高',lastContact:'',notes:'',nextFollow:'',linkedProject:'蔬菜半水培',remark:'私企设计院'},
+  {id:5,name:'海南双翼田园技术工程',contact:'沈明海',position:'公司老板',phone:'',type:'工程/集成商',depth:'浅',active:'否',potential:'高',lastContact:'',notes:'',nextFollow:'',linkedProject:'',remark:'可发展为渠道伙伴'},
+  {id:6,name:'海南中海联科信息技术',contact:'杜守来',position:'公司副总',phone:'',type:'工程/集成商',depth:'浅',active:'否',potential:'中',lastContact:'',notes:'',nextFollow:'',linkedProject:'',remark:'信息化集成商'},
+  {id:7,name:'海南同业信息工程',contact:'洪嘉佟',position:'老板娘',phone:'',type:'工程/集成商',depth:'浅',active:'否',potential:'中',lastContact:'',notes:'',nextFollow:'',linkedProject:'',remark:'本地集成商'},
+  {id:8,name:'三亚林科院国家兰花种质资源库',contact:'黄工',position:'管理员',phone:'',type:'科研机构',depth:'浅',active:'否',potential:'中',lastContact:'',notes:'',nextFollow:'',linkedProject:'',remark:'科研背书+参观示范'},
+  {id:9,name:'海南乾城建筑工程',contact:'胡宏杰',position:'项目经理',phone:'',type:'工程/集成商',depth:'浅',active:'否',potential:'高',lastContact:'',notes:'',nextFollow:'',linkedProject:'',remark:'施工类渠道'},
+  {id:10,name:'海南菱云科技',contact:'邢孔尧',position:'公司法人',phone:'',type:'工程/集成商',depth:'浅',active:'否',potential:'中',lastContact:'',notes:'',nextFollow:'',linkedProject:'',remark:''},
+  {id:11,name:'海南山河灌溉',contact:'张总',position:'公司法人',phone:'',type:'灌溉/设备',depth:'浅',active:'否',potential:'中',lastContact:'',notes:'',nextFollow:'',linkedProject:'海南绿化灌溉',remark:'灌溉生态互补'},
+  {id:12,name:'浙江大豪建设海南项目部',contact:'谢冉',position:'华南负责人',phone:'',type:'工程/集成商',depth:'浅',active:'否',potential:'高',lastContact:'',notes:'',nextFollow:'',linkedProject:'',remark:'全国性建设公司'},
+  {id:13,name:'海南金垦赛博信息科技',contact:'白跃',position:'农业售前',phone:'',type:'农垦甲方',depth:'中',active:'是',potential:'高',lastContact:'',notes:'',nextFollow:'',linkedProject:'金江红毛丹',remark:'既是客户也可能是竞对'},
+  {id:14,name:'海南裕蓝雾化农业科技',contact:'戴强灿',position:'公司法人',phone:'',type:'灌溉/设备',depth:'浅',active:'否',potential:'低',lastContact:'',notes:'',nextFollow:'',linkedProject:'',remark:'雾化设备互补'},
+  {id:15,name:'海南宝秀节水科技',contact:'何秀英',position:'公司法人',phone:'',type:'灌溉/设备',depth:'浅',active:'否',potential:'中',lastContact:'',notes:'',nextFollow:'',linkedProject:'',remark:'节水灌溉互补'},
+];
+
+const defaultWeekly = [
+  {week:'第1周',range:'',visits:'',proposals:'',leads:'',contacts:'',note:''},
+  {week:'第2周',range:'',visits:'',proposals:'',leads:'',contacts:'',note:''},
+  {week:'第3周',range:'',visits:'',proposals:'',leads:'',contacts:'',note:''},
+  {week:'第4周',range:'',visits:'',proposals:'',leads:'',contacts:'',note:''},
+  {week:'第5周',range:'',visits:'',proposals:'',leads:'',contacts:'',note:''},
+  {week:'第6周',range:'',visits:'',proposals:'',leads:'',contacts:'',note:''},
+  {week:'第7周',range:'',visits:'',proposals:'',leads:'',contacts:'',note:''},
+  {week:'第8周',range:'',visits:'',proposals:'',leads:'',contacts:'',note:''},
+];
+
+function loadData() {
+  // Try STORAGE_KEY first, then fall back to older keys
+  const keysToTry = [STORAGE_KEY, 'hainan_sales_dashboard_v3', 'hainan_sales_dashboard_v2', 'hainan_sales_dashboard_v1'];
+  for (const key of keysToTry) {
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      try {
+        data = JSON.parse(saved);
+        // Migrate to current key if loaded from old key
+        if (key !== STORAGE_KEY) {
+          localStorage.setItem(STORAGE_KEY, saved);
+        }
+        return;
+      } catch(e) { /* corrupt data, try next */ }
+    }
+  }
+  // No valid saved data found — use defaults
+  initDefaults();
+  saveAll(); // persist defaults immediately
+}
+function initDefaults() {
+  data.projects = JSON.parse(JSON.stringify(defaultProjects));
+  data.clients = JSON.parse(JSON.stringify(defaultClients));
+  data.weekly = JSON.parse(JSON.stringify(defaultWeekly));
+}
+function saveAll() {
+  syncTableToData();
+  syncClientsToData();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  refreshDashboard();
+  showToast('✅ 数据已保存 ' + new Date().toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+}
+
+function exportBackup() {
+  syncTableToData();
+  syncClientsToData();
+  const backup = {
+    version: 'v4',
+    exportedAt: new Date().toISOString(),
+    data: data
+  };
+  const json = JSON.stringify(backup, null, 2);
+  const blob = new Blob([json], {type:'application/json;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = '海南看板备份_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click(); URL.revokeObjectURL(url);
+  showToast('📥 备份文件已下载');
+}
+
+function importBackup() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      try {
+        const backup = JSON.parse(ev.target.result);
+        if (!backup.data || !backup.data.projects) throw new Error('无效的备份文件格式');
+        data = backup.data;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        renderPipeline();
+        renderClients();
+        renderWeekly();
+        refreshDashboard();
+        showToast('📤 备份恢复成功！' + (backup.exportedAt ? ' 备份时间：' + new Date(backup.exportedAt).toLocaleString('zh-CN') : ''));
+      } catch(err) {
+        alert('❌ 恢复失败：文件格式不正确。请选择通过"导出备份"生成的 .json 文件。');
+      }
+    };
+    reader.readAsText(file, 'UTF-8');
+  };
+  input.click();
+}
+
+function showToast(msg) {
+  let toast = document.getElementById('save-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'save-toast';
+    toast.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#059669;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.2);transition:opacity .3s;pointer-events:none;';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 2000);
+}
+
+// ========================================
+// RENDER PIPELINE TABLE
+// ========================================
+const STAGE_OPTIONS = ['可研阶段','设计阶段','招标阶段','已中标','我司报价阶段','我司合同阶段','我司实施阶段','我司验收阶段','交付完成','已丢单'];
+const CONF_OPTIONS = ['1','2','3','4','5','6','7','8','9','10','—'];
+const DEPTH_OPTIONS = ['深','中','浅'];
+const YESNO_OPTIONS = ['是','否'];
+const POTENTIAL_OPTIONS = ['高','中','低'];
+
+function renderPipeline() {
+  const tbody = document.querySelector('#tbl-pipeline tbody');
+  tbody.innerHTML = '';
+  data.projects.forEach((p, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="checkbox" class="row-check" data-id="${p.id}" onclick="event.stopPropagation()"></td>
+      <td>${p.id}</td>
+      <td contenteditable="true" data-field="name" data-id="${p.id}" class="editable">${p.name||''}</td>
+      <td>${selectHTML('stage', p.stage, STAGE_OPTIONS, p.id)}</td>
+      <td contenteditable="true" data-field="quoteAmount" data-id="${p.id}" class="editable num-cell">${p.quoteAmount||''}</td>
+      <td contenteditable="true" data-field="contract" data-id="${p.id}" class="editable num-cell">${p.contract||''}</td>
+      <td contenteditable="true" data-field="collected" data-id="${p.id}" class="editable num-cell">${p.collected||''}</td>
+      <td class="readonly receivable-cell" data-id="${p.id}">${calcReceivable(p)}</td>
+      <td>${selectHTML('confidence', p.confidence, CONF_OPTIONS, p.id)}</td>
+      <td contenteditable="true" data-field="closeMonth" data-id="${p.id}" class="editable">${p.closeMonth||''}</td>
+      <td contenteditable="true" data-field="followUp" data-id="${p.id}" class="editable followup-cell">${p.followUp||''}</td>
+      <td contenteditable="true" data-field="blocker" data-id="${p.id}" class="editable">${p.blocker||''}</td>
+      <td contenteditable="true" data-field="contact" data-id="${p.id}" class="editable">${p.contact||''}</td>
+      <td contenteditable="true" data-field="competitor" data-id="${p.id}" class="editable">${p.competitor||''}</td>
+      <td contenteditable="true" data-field="note" data-id="${p.id}" class="editable">${p.note||''}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  // Attach listeners
+  document.querySelectorAll('#tbl-pipeline .editable').forEach(el => {
+    el.addEventListener('blur', onCellEdit);
+  });
+  document.querySelectorAll('#tbl-pipeline select').forEach(sel => {
+    sel.addEventListener('change', onSelectChange);
+  });
+}
+
+function calcReceivable(p) {
+  const c = parseFloat(p.contract) || 0;
+  const col = parseFloat(p.collected) || 0;
+  const r = c - col;
+  return r > 0 ? r.toFixed(1) : (c > 0 ? '0' : '');
+}
+
+function selectHTML(field, currentVal, options, id) {
+  let html = `<select data-field="${field}" data-id="${id}" style="width:100px;padding:4px;border:1px solid #d1d5db;border-radius:4px;font-size:11px;">`;
+  options.forEach(opt => {
+    html += `<option value="${opt}" ${opt===currentVal?'selected':''}>${opt}</option>`;
+  });
+  html += '</select>';
+  return html;
+}
+
+function onCellEdit(e) {
+  const el = e.target;
+  const id = parseInt(el.dataset.id);
+  const field = el.dataset.field;
+  const proj = data.projects.find(p => p.id === id);
+  if (proj) {
+    proj[field] = el.textContent.trim();
+    // Auto-calc receivable
+    if (field === 'contract' || field === 'collected') {
+      const tr = el.closest('tr');
+      const recCell = tr.querySelector('.receivable-cell');
+      if (recCell) recCell.textContent = calcReceivable(proj);
+    }
+  }
+}
+
+function onSelectChange(e) {
+  const sel = e.target;
+  const id = parseInt(sel.dataset.id);
+  const field = sel.dataset.field;
+  const proj = data.projects.find(p => p.id === id);
+  if (proj) {
+    proj[field] = sel.value;
+  }
+}
+
+function syncTableToData() {
+  // Editable cells
+  document.querySelectorAll('#tbl-pipeline .editable').forEach(el => {
+    const id = parseInt(el.dataset.id);
+    const field = el.dataset.field;
+    const proj = data.projects.find(p => p.id === id);
+    if (proj) proj[field] = el.textContent.trim();
+  });
+  // Selects
+  document.querySelectorAll('#tbl-pipeline select').forEach(sel => {
+    const id = parseInt(sel.dataset.id);
+    const field = sel.dataset.field;
+    const proj = data.projects.find(p => p.id === id);
+    if (proj) proj[field] = sel.value;
+  });
+}
+
+// ========================================
+// RENDER CLIENTS TABLE
+// ========================================
+function renderClients() {
+  const tbody = document.querySelector('#tbl-clients tbody');
+  tbody.innerHTML = '';
+  data.clients.forEach(c => {
+    const tr = document.createElement('tr');
+    const typeTag = getTypeTag(c.type);
+    tr.innerHTML = `
+      <td>${c.id}</td>
+      <td contenteditable="true" data-field="name" data-cid="${c.id}" class="editable-c">${c.name||''}</td>
+      <td contenteditable="true" data-field="contact" data-cid="${c.id}" class="editable-c">${c.contact||''}</td>
+      <td contenteditable="true" data-field="position" data-cid="${c.id}" class="editable-c">${c.position||''}</td>
+      <td contenteditable="true" data-field="phone" data-cid="${c.id}" class="editable-c">${c.phone||''}</td>
+      <td>${selectHTML_c('type', c.type, ['农垦甲方','设计院','工程/集成商','灌溉/设备','科研机构'], c.id)}</td>
+      <td>${selectHTML_c('depth', c.depth, DEPTH_OPTIONS, c.id)}</td>
+      <td>${selectHTML_c('active', c.active, YESNO_OPTIONS, c.id)}</td>
+      <td>${selectHTML_c('potential', c.potential, POTENTIAL_OPTIONS, c.id)}</td>
+      <td contenteditable="true" data-field="lastContact" data-cid="${c.id}" class="editable-c">${c.lastContact||''}</td>
+      <td contenteditable="true" data-field="notes" data-cid="${c.id}" class="editable-c">${c.notes||''}</td>
+      <td contenteditable="true" data-field="nextFollow" data-cid="${c.id}" class="editable-c">${c.nextFollow||''}</td>
+      <td contenteditable="true" data-field="linkedProject" data-cid="${c.id}" class="editable-c">${c.linkedProject||''}</td>
+      <td contenteditable="true" data-field="remark" data-cid="${c.id}" class="editable-c">${c.remark||''}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  document.querySelectorAll('.editable-c').forEach(el => {
+    el.addEventListener('blur', onClientEdit);
+  });
+  document.querySelectorAll('#tbl-clients select').forEach(sel => {
+    sel.addEventListener('change', onClientSelect);
+  });
+}
+
+function getTypeTag(type) {
+  const map = {
+    '农垦甲方': 'tag-party',
+    '设计院': 'tag-design',
+    '工程/集成商': 'tag-integrator',
+    '灌溉/设备': 'tag-irrigation',
+    '科研机构': 'tag-research'
+  };
+  return map[type] || '';
+}
+
+function selectHTML_c(field, currentVal, options, id) {
+  let html = `<select data-field="${field}" data-cid="${id}" style="width:100%;padding:4px;border:1px solid #d1d5db;border-radius:4px;font-size:11px;">`;
+  options.forEach(opt => {
+    html += `<option value="${opt}" ${opt===currentVal?'selected':''}>${opt}</option>`;
+  });
+  html += '</select>';
+  return html;
+}
+
+function onClientEdit(e) {
+  const el = e.target;
+  const id = parseInt(el.dataset.cid);
+  const field = el.dataset.field;
+  const c = data.clients.find(c => c.id === id);
+  if (c) c[field] = el.textContent.trim();
+}
+
+function onClientSelect(e) {
+  const sel = e.target;
+  const id = parseInt(sel.dataset.cid);
+  const field = sel.dataset.field;
+  const c = data.clients.find(c => c.id === id);
+  if (c) c[field] = sel.value;
+}
+
+function syncClientsToData() {
+  document.querySelectorAll('.editable-c').forEach(el => {
+    const id = parseInt(el.dataset.cid);
+    const field = el.dataset.field;
+    const c = data.clients.find(c => c.id === id);
+    if (c) c[field] = el.textContent.trim();
+  });
+  document.querySelectorAll('#tbl-clients select').forEach(sel => {
+    const id = parseInt(sel.dataset.cid);
+    const field = sel.dataset.field;
+    const c = data.clients.find(c => c.id === id);
+    if (c) c[field] = sel.value;
+  });
+}
+
+// ========================================
+// RENDER WEEKLY TABLE
+// ========================================
+function renderWeekly() {
+  const tbody = document.querySelector('#tbl-weekly tbody');
+  tbody.innerHTML = '';
+  data.weekly.forEach((w, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${w.week}</td>
+      <td contenteditable="true" data-field="range" data-wid="${i}" class="editable-w">${w.range||''}</td>
+      <td contenteditable="true" data-field="visits" data-wid="${i}" class="editable-w num-cell">${w.visits||''}</td>
+      <td contenteditable="true" data-field="proposals" data-wid="${i}" class="editable-w num-cell">${w.proposals||''}</td>
+      <td contenteditable="true" data-field="leads" data-wid="${i}" class="editable-w num-cell">${w.leads||''}</td>
+      <td contenteditable="true" data-field="contacts" data-wid="${i}" class="editable-w num-cell">${w.contacts||''}</td>
+      <td contenteditable="true" data-field="note" data-wid="${i}" class="editable-w">${w.note||''}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  document.querySelectorAll('.editable-w').forEach(el => {
+    el.addEventListener('blur', e => {
+      const idx = parseInt(e.target.dataset.wid);
+      const field = e.target.dataset.field;
+      data.weekly[idx][field] = e.target.textContent.trim();
+    });
+  });
+}
+
+// ========================================
+// DASHBOARD REFRESH
+// ========================================
+let chartStage = null, chartFinance = null;
+
+function refreshDashboard() {
+  syncTableToData();
+  syncClientsToData();
+
+  const projs = data.projects;
+  // Count stages
+  const counts = {};
+  STAGE_OPTIONS.forEach(s => counts[s] = 0);
+  counts['已完工'] = 0;
+  projs.forEach(p => { if (counts[p.stage] !== undefined) counts[p.stage]++; else counts[p.stage] = 1; });
+
+  const feasibility = (counts['可研阶段']||0);
+  const design = (counts['设计阶段']||0);
+  const bidding = (counts['招标阶段']||0);
+  const winBid = (counts['已中标']||0);
+  const quote = (counts['我司报价阶段']||0);
+  const contract = (counts['我司合同阶段']||0);
+  const implement = (counts['我司实施阶段']||0);
+  const accept = (counts['我司验收阶段']||0);
+  const done = (counts['交付完成']||0);
+  const lost = (counts['已丢单']||0);
+
+  // Following = before we win
+  const following = feasibility + design + bidding + winBid + quote;
+  const implementing = contract + implement + accept;
+
+  document.getElementById('kpi-projects').textContent = projs.length;
+  document.getElementById('kpi-feasibility').textContent = following;
+  document.getElementById('kpi-implement').textContent = implementing;
+  document.getElementById('kpi-done').textContent = done;
+
+  // Financials
+  let totalQuote = 0, totalContract = 0, totalCollected = 0;
+  projs.forEach(p => {
+    totalQuote += parseFloat(p.quoteAmount) || 0;
+    totalContract += parseFloat(p.contract) || 0;
+    totalCollected += parseFloat(p.collected) || 0;
+  });
+  const totalReceivable = totalContract - totalCollected;
+  const signedCount = projs.filter(p => p.stage === '我司合同阶段' || p.stage === '我司实施阶段' || p.stage === '我司验收阶段' || p.stage === '交付完成').length;
+  const quotedCount = projs.filter(p => (parseFloat(p.quoteAmount)||0) > 0).length;
+
+  document.getElementById('kpi-quote').textContent = totalQuote > 0 ? totalQuote.toFixed(1) : '—';
+  document.getElementById('kpi-contract').textContent = totalContract > 0 ? totalContract.toFixed(1) : '—';
+  document.getElementById('kpi-quoted').textContent = quotedCount;
+  document.getElementById('kpi-collected').textContent = totalCollected > 0 ? totalCollected.toFixed(1) : '—';
+  document.getElementById('kpi-receivable').textContent = totalReceivable > 0 ? totalReceivable.toFixed(1) : (totalContract > 0 ? '0' : '—');
+  document.getElementById('kpi-signed').textContent = signedCount;
+  if (totalContract > 0) {
+    document.getElementById('kpi-collect-rate').textContent = (totalCollected / totalContract * 100).toFixed(0) + '%';
+  } else {
+    document.getElementById('kpi-collect-rate').textContent = '—';
+  }
+  const pendingCount = projs.filter(p => (parseFloat(p.contract)||0) > (parseFloat(p.collected)||0)).length;
+  document.getElementById('kpi-pending').textContent = pendingCount;
+
+  // Fin summary bar
+  document.getElementById('fin-quote').textContent = totalQuote.toFixed(1) + ' 万';
+  document.getElementById('fin-contract').textContent = totalContract.toFixed(1) + ' 万';
+  document.getElementById('fin-collected').textContent = totalCollected.toFixed(1) + ' 万';
+  document.getElementById('fin-receivable').textContent = totalReceivable.toFixed(1) + ' 万';
+  document.getElementById('fin-rate').textContent = totalContract > 0 ? (totalCollected/totalContract*100).toFixed(0)+'%' : '—';
+
+  // Charts
+  updateCharts(feasibility, design, bidding, winBid, quote, contract, implement, accept, done, lost, totalContract, totalCollected, totalReceivable, totalQuote);
+}
+
+function updateCharts(fea, des, bid, win, qte, ctr, imp, acc, done, lost, tC, tCo, tR, tQ) {
+  // Stage Chart
+  const ctx1 = document.getElementById('chartStage').getContext('2d');
+  if (chartStage) chartStage.destroy();
+  chartStage = new Chart(ctx1, {
+    type: 'doughnut',
+    data: {
+      labels: ['可研阶段','设计阶段','招标阶段','已中标','我司报价阶段','我司合同阶段','我司实施阶段','我司验收阶段','交付完成','已丢单'],
+      datasets: [{
+        data: [fea, des, bid, win, qte, ctr, imp, acc, done, lost],
+        backgroundColor: ['#dc2626','#d97706','#2563eb','#0891b2','#ea580c','#7c3aed','#059669','#0f3460','#a21caf','#6b7280'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, position: 'right', labels: { boxWidth: 12, padding: 10, font: { size: 10 }, generateLabels: function(chart) { const data = chart.data; return data.labels.map((label, i) => ({ text: label + '  ' + data.datasets[0].data[i], fillStyle: data.datasets[0].backgroundColor[i], strokeStyle: data.datasets[0].backgroundColor[i], index: i, lineWidth: 0, hidden: false, pointStyle: 'rectRounded', borderRadius: 2 })); } } },
+        tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.raw} 个` } }
+      }
+    },
+    plugins: [{
+      id: 'showCounts',
+      afterDraw(chart) {
+        const ctx = chart.ctx;
+        const meta = chart.getDatasetMeta(0);
+        meta.data.forEach((arc, i) => {
+          const val = chart.data.datasets[0].data[i];
+          if (val === 0) return;
+          const angle = (arc.startAngle + arc.endAngle) / 2;
+          const r = (arc.outerRadius + arc.innerRadius) / 2;
+          const x = arc.x + Math.cos(angle) * r;
+          const y = arc.y + Math.sin(angle) * r;
+          ctx.save();
+          ctx.font = 'bold 14px "Microsoft YaHei"';
+          ctx.fillStyle = '#fff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(val, x, y);
+          ctx.restore();
+        });
+      }
+    }]
+  });
+
+  // Finance Chart
+  const ctx2 = document.getElementById('chartFinance').getContext('2d');
+  if (chartFinance) chartFinance.destroy();
+  chartFinance = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: ['报价总金额','合同总金额','已收款项','应收款项'],
+      datasets: [{
+        label: '万元',
+        data: [tQ, tC, tCo, tR],
+        backgroundColor: ['#0891b2','#2563eb','#059669','#dc2626'],
+        borderRadius: 6,
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, ticks: { callback: v => v + ' 万' } }
+      }
+    },
+    plugins: [{
+      id: 'barLabels',
+      afterDraw(chart) {
+        const ctx = chart.ctx;
+        const meta = chart.getDatasetMeta(0);
+        meta.data.forEach((bar, i) => {
+          const val = chart.data.datasets[0].data[i];
+          if (val === 0) return;
+          ctx.save();
+          ctx.font = 'bold 13px "Microsoft YaHei"';
+          ctx.fillStyle = '#1f2937';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(val + ' 万', bar.x, bar.y - 4);
+          ctx.restore();
+        });
+      }
+    }]
+  });
+}
+
+// ========================================
+// ACTIONS
+// ========================================
+function addProject() {
+  const maxId = data.projects.length > 0 ? Math.max(...data.projects.map(p => p.id)) : 0;
+  data.projects.push({
+    id: maxId + 1, name: '新项目', stage: '可研阶段', quoteAmount: '', contract: '', collected: '',
+    confidence: '', closeMonth: '', followUp: '', blocker: '', contact: '', competitor: '', note: ''
+  });
+  renderPipeline();
+  refreshDashboard();
+}
+
+function deleteProject() {
+  const checks = document.querySelectorAll('#tbl-pipeline .row-check:checked');
+  if (checks.length === 0) { alert('请先勾选要删除的项目'); return; }
+  if (!confirm(`确定删除 ${checks.length} 个项目？`)) return;
+  const ids = Array.from(checks).map(cb => parseInt(cb.dataset.id));
+  data.projects = data.projects.filter(p => !ids.includes(p.id));
+  renderPipeline();
+  refreshDashboard();
+}
+
+function addClient() {
+  const maxId = data.clients.length > 0 ? Math.max(...data.clients.map(c => c.id)) : 0;
+  data.clients.push({
+    id: maxId + 1, name: '新客户', contact: '', position: '', phone: '',
+    type: '工程/集成商', depth: '浅', active: '否', potential: '中',
+    lastContact: '', notes: '', nextFollow: '', linkedProject: '', remark: ''
+  });
+  renderClients();
+}
+
+function toggleTableExpand(wrapId, btn) {
+  const el = document.getElementById(wrapId);
+  const expanded = el.classList.toggle('expanded');
+  btn.textContent = expanded ? '📐 收起' : '📐 展开全部';
+}
+
+function toggleSelectAll(cb) {
+  document.querySelectorAll('#tbl-pipeline .row-check').forEach(c => c.checked = cb.checked);
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+async function exportShareVersion() {
+  syncTableToData();
+  syncClientsToData();
+  saveAll();
+
+  showToast('📸 正在生成截图，请稍候...');
+
+  // Expand all tables before capture
+  const pipelineWrap = document.getElementById('pipeline-table-wrap');
+  const clientsWrap = document.getElementById('clients-table-wrap');
+  const wasExpandedP = pipelineWrap.classList.contains('expanded');
+  const wasExpandedC = clientsWrap.classList.contains('expanded');
+  pipelineWrap.classList.add('expanded');
+  clientsWrap.classList.add('expanded');
+
+  // Switch to pipeline tab for the screenshot (most important)
+  const currentTab = document.querySelector('.tab.active');
+  const currentContent = document.querySelector('.tab-content.active');
+
+  // Take 3 screenshots and stitch them
+  const container = document.querySelector('.container');
+
+  try {
+    // Pipeline screenshot
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelector('.tab').classList.add('active');
+    document.getElementById('tab-pipeline').classList.add('active');
+
+    await new Promise(r => setTimeout(r, 500)); // wait for chart render
+
+    const pipelineCanvas = await html2canvas(container, {
+      backgroundColor: '#f0f2f5',
+      scale: 2,
+      useCORS: true,
+      logging: false
+    });
+
+    // Clients screenshot
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.tab')[1].classList.add('active');
+    document.getElementById('tab-clients').classList.add('active');
+
+    await new Promise(r => setTimeout(r, 300));
+
+    const clientsCanvas = await html2canvas(document.getElementById('tab-clients'), {
+      backgroundColor: '#ffffff',
+      scale: 2,
+      useCORS: true,
+      logging: false
+    });
+
+    // Weekly screenshot
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.tab')[2].classList.add('active');
+    document.getElementById('tab-weekly').classList.add('active');
+
+    await new Promise(r => setTimeout(r, 300));
+
+    const weeklyCanvas = await html2canvas(document.getElementById('tab-weekly'), {
+      backgroundColor: '#ffffff',
+      scale: 2,
+      useCORS: true,
+      logging: false
+    });
+
+    // Stitch: KPI + Charts + each tab
+    const gap = 16;
+    const totalHeight = pipelineCanvas.height + clientsCanvas.height + weeklyCanvas.height + gap * 2;
+    const maxWidth = Math.max(pipelineCanvas.width, clientsCanvas.width, weeklyCanvas.width);
+    const fullCanvas = document.createElement('canvas');
+    fullCanvas.width = maxWidth;
+    fullCanvas.height = totalHeight;
+    const ctx = fullCanvas.getContext('2d');
+    ctx.fillStyle = '#f0f2f5';
+    ctx.fillRect(0, 0, fullCanvas.width, fullCanvas.height);
+
+    let y = 0;
+    ctx.drawImage(pipelineCanvas, 0, y);
+    y += pipelineCanvas.height + gap;
+    ctx.drawImage(clientsCanvas, 0, y);
+    y += clientsCanvas.height + gap;
+    ctx.drawImage(weeklyCanvas, 0, y);
+
+    // Download
+    const blob = await new Promise(resolve => fullCanvas.toBlob(resolve, 'image/png'));
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '海南销售看板_' + new Date().toISOString().slice(0, 10) + '.png';
+    a.click();
+    URL.revokeObjectURL(url);
+
+    showToast('📸 截图已导出，可直接发给同事！');
+
+  } catch(err) {
+    console.error(err);
+    alert('截图生成失败：' + err.message);
+  } finally {
+    // Restore original state
+    if (!wasExpandedP) pipelineWrap.classList.remove('expanded');
+    if (!wasExpandedC) clientsWrap.classList.remove('expanded');
+    if (currentTab) currentTab.click();
+  }
+}
+
+function exportCSV() {
+  syncTableToData();
+  let csv = '﻿序号,项目名称,阶段,报价金额(万),合同金额(万),已收款项(万),应收款项(万),赢单信心,预计成交,跟进过程,卡点/风险,关键联系人,竞对,备注\n';
+  data.projects.forEach(p => {
+    const row = [p.id, p.name, p.stage, p.quoteAmount||'', p.contract||'', p.collected||'', calcReceivable(p), p.confidence||'', p.closeMonth||'', p.followUp||'', p.blocker||'', p.contact||'', p.competitor||'', p.note||''];
+    csv += row.map(v => '"'+String(v).replace(/"/g,'""')+'"').join(',') + '\n';
+  });
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = '海南项目Pipeline_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ========================================
+// INIT
+// ========================================
+loadData();
+renderPipeline();
+renderClients();
+renderWeekly();
+refreshDashboard();
+
+// Auto-save every 30s
+setInterval(() => {
+  syncTableToData();
+  syncClientsToData();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}, 30000);
+
+window.addEventListener('beforeunload', () => {
+  syncTableToData();
+  syncClientsToData();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+});
+</script>
+</body>
+</html>
