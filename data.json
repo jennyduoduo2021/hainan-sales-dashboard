@@ -1,0 +1,37 @@
+{
+  "projects": [
+    {"id":1,"name":"澄迈县果蔬融合发展乡村振兴建设项目","stage":"可研阶段","quoteAmount":"","contract":"","collected":"","confidence":"","closeMonth":"","followUp":"","blocker":"","contact":"陆总(海垦果蔬集团)","competitor":"","note":"乡村振兴资金"},
+    {"id":2,"name":"蔬菜半水培栽培技术中试观摩科普基地项目","stage":"设计阶段","quoteAmount":"","contract":"","collected":"","confidence":"","closeMonth":"","followUp":"","blocker":"","contact":"郝志强(智璟工程)","competitor":"","note":""},
+    {"id":3,"name":"红华农场公司热带高效农业产业种植项目","stage":"我司实施阶段","quoteAmount":"","contract":"","collected":"","confidence":"—","closeMonth":"","followUp":"","blocker":"","contact":"姚总(海垦建工集团)","competitor":"","note":"已签合同，关注回款"},
+    {"id":4,"name":"海南农垦金江农场公司红毛丹标准示范基地建设项目","stage":"我司实施阶段","quoteAmount":"","contract":"","collected":"","confidence":"—","closeMonth":"","followUp":"","blocker":"","contact":"白跃(金垦赛博)","competitor":"","note":"已签合同，标杆项目"},
+    {"id":5,"name":"海南绿化灌溉项目","stage":"设计阶段","quoteAmount":"","contract":"","collected":"","confidence":"","closeMonth":"","followUp":"","blocker":"","contact":"张总(山河灌溉)","competitor":"","note":"可联动灌溉生态"}
+  ],
+  "clients": [
+    {"id":1,"name":"海南农垦果蔬集团","contact":"陆总","position":"公司副总","phone":"","type":"农垦甲方","depth":"中","active":"是","potential":"高","lastContact":"","notes":"","nextFollow":"","linkedProject":"澄迈果蔬融合","remark":"海垦体系核心甲方"},
+    {"id":2,"name":"海南农垦建工集团","contact":"姚总","position":"项目经理","phone":"","type":"农垦甲方","depth":"中","active":"是","potential":"高","lastContact":"","notes":"","nextFollow":"","linkedProject":"红华农场","remark":"施工总包方"},
+    {"id":3,"name":"海南农垦设计院","contact":"林工","position":"农业设计总工","phone":"","type":"设计院","depth":"中","active":"是","potential":"高","lastContact":"","notes":"","nextFollow":"","linkedProject":"多个项目","remark":"项目源头，关键技术决策者"},
+    {"id":4,"name":"海南智璟工程设计咨询","contact":"郝志强","position":"公司老总","phone":"","type":"设计院","depth":"中","active":"是","potential":"高","lastContact":"","notes":"","nextFollow":"","linkedProject":"蔬菜半水培","remark":"私企设计院"},
+    {"id":5,"name":"海南双翼田园技术工程","contact":"沈明海","position":"公司老板","phone":"","type":"工程/集成商","depth":"浅","active":"否","potential":"高","lastContact":"","notes":"","nextFollow":"","linkedProject":"","remark":"可发展为渠道伙伴"},
+    {"id":6,"name":"海南中海联科信息技术","contact":"杜守来","position":"公司副总","phone":"","type":"工程/集成商","depth":"浅","active":"否","potential":"中","lastContact":"","notes":"","nextFollow":"","linkedProject":"","remark":"信息化集成商"},
+    {"id":7,"name":"海南同业信息工程","contact":"洪嘉佟","position":"老板娘","phone":"","type":"工程/集成商","depth":"浅","active":"否","potential":"中","lastContact":"","notes":"","nextFollow":"","linkedProject":"","remark":"本地集成商"},
+    {"id":8,"name":"三亚林科院国家兰花种质资源库","contact":"黄工","position":"管理员","phone":"","type":"科研机构","depth":"浅","active":"否","potential":"中","lastContact":"","notes":"","nextFollow":"","linkedProject":"","remark":"科研背书+参观示范"},
+    {"id":9,"name":"海南乾城建筑工程","contact":"胡宏杰","position":"项目经理","phone":"","type":"工程/集成商","depth":"浅","active":"否","potential":"高","lastContact":"","notes":"","nextFollow":"","linkedProject":"","remark":"施工类渠道"},
+    {"id":10,"name":"海南菱云科技","contact":"邢孔尧","position":"公司法人","phone":"","type":"工程/集成商","depth":"浅","active":"否","potential":"中","lastContact":"","notes":"","nextFollow":"","linkedProject":"","remark":""},
+    {"id":11,"name":"海南山河灌溉","contact":"张总","position":"公司法人","phone":"","type":"灌溉/设备","depth":"浅","active":"否","potential":"中","lastContact":"","notes":"","nextFollow":"","linkedProject":"海南绿化灌溉","remark":"灌溉生态互补"},
+    {"id":12,"name":"浙江大豪建设海南项目部","contact":"谢冉","position":"华南负责人","phone":"","type":"工程/集成商","depth":"浅","active":"否","potential":"高","lastContact":"","notes":"","nextFollow":"","linkedProject":"","remark":"全国性建设公司"},
+    {"id":13,"name":"海南金垦赛博信息科技","contact":"白跃","position":"农业售前","phone":"","type":"农垦甲方","depth":"中","active":"是","potential":"高","lastContact":"","notes":"","nextFollow":"","linkedProject":"金江红毛丹","remark":"既是客户也可能是竞对"},
+    {"id":14,"name":"海南裕蓝雾化农业科技","contact":"戴强灿","position":"公司法人","phone":"","type":"灌溉/设备","depth":"浅","active":"否","potential":"低","lastContact":"","notes":"","nextFollow":"","linkedProject":"","remark":"雾化设备互补"},
+    {"id":15,"name":"海南宝秀节水科技","contact":"何秀英","position":"公司法人","phone":"","type":"灌溉/设备","depth":"浅","active":"否","potential":"中","lastContact":"","notes":"","nextFollow":"","linkedProject":"","remark":"节水灌溉互补"}
+  ],
+  "weekly": [
+    {"week":"第1周","range":"","visits":"","proposals":"","leads":"","contacts":"","note":""},
+    {"week":"第2周","range":"","visits":"","proposals":"","leads":"","contacts":"","note":""},
+    {"week":"第3周","range":"","visits":"","proposals":"","leads":"","contacts":"","note":""},
+    {"week":"第4周","range":"","visits":"","proposals":"","leads":"","contacts":"","note":""},
+    {"week":"第5周","range":"","visits":"","proposals":"","leads":"","contacts":"","note":""},
+    {"week":"第6周","range":"","visits":"","proposals":"","leads":"","contacts":"","note":""},
+    {"week":"第7周","range":"","visits":"","proposals":"","leads":"","contacts":"","note":""},
+    {"week":"第8周","range":"","visits":"","proposals":"","leads":"","contacts":"","note":""}
+  ],
+  "updatedAt": "2026-06-26T22:50:00+08:00"
+}

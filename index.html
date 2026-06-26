@@ -114,6 +114,7 @@ td select { min-width: 120px; max-width: 140px; font-family: inherit; }
     <button class="btn btn-ghost" onclick="importBackup()">📤 恢复备份</button>
     <button class="btn btn-ghost" onclick="exportCSV()">📋 CSV</button>
     <button class="btn btn-ghost" style="background:#ea580c;color:#fff;" onclick="exportShareVersion()">📸 导出长图</button>
+    <button class="btn btn-ghost" id="cloud-btn" onclick="openCloudSettings()" title="云同步设置">☁️ <span id="cloud-status-text">未连接</span></button>
   </div>
 </div>
 
@@ -262,14 +263,27 @@ td select { min-width: 120px; max-width: 140px; font-family: inherit; }
 
 <script>
 // ========================================
-// DATA STORE (loaded from localStorage)
+// DATA STORE - GitHub API Cloud Sync
 // ========================================
+// Configuration — update these for your repo
+const GITHUB_OWNER = 'jennyduoduo2021';
+const GITHUB_REPO = 'hainan-sales-dashboard';
+const DATA_FILE = 'data.json';
+const API_BASE = 'https://api.github.com';
+
+// API Key — you'll set this when first using the dashboard
+// Get a token at: https://github.com/settings/tokens (need 'repo' scope)
+let GITHUB_TOKEN = localStorage.getItem('hainan_github_token') || '';
+
 const STORAGE_KEY = 'hainan_sales_dashboard_v4';
 let data = {
   projects: [],
   clients: [],
   weekly: []
 };
+let dataSha = null; // SHA of the data file on GitHub (needed for updates)
+let cloudSyncing = false;
+let lastCloudSync = null;
 
 const defaultProjects = [
   {id:1,name:'澄迈县果蔬融合发展乡村振兴建设项目',stage:'可研阶段',quoteAmount:'',contract:'',collected:'',confidence:'',closeMonth:'',followUp:'',blocker:'',contact:'陆总(海垦果蔬集团)',competitor:'',note:'乡村振兴资金'},
@@ -309,14 +323,23 @@ const defaultWeekly = [
 ];
 
 function loadData() {
-  // Try STORAGE_KEY first, then fall back to older keys
+  // 1. Try cloud data first (from repo data.json)
+  if (GITHUB_TOKEN) {
+    pullFromCloud().then(() => {
+      renderAll();
+    });
+  }
+  // 2. Fallback: localStorage
   const keysToTry = [STORAGE_KEY, 'hainan_sales_dashboard_v3', 'hainan_sales_dashboard_v2', 'hainan_sales_dashboard_v1'];
   for (const key of keysToTry) {
     const saved = localStorage.getItem(key);
     if (saved) {
       try {
-        data = JSON.parse(saved);
-        // Migrate to current key if loaded from old key
+        const parsed = JSON.parse(saved);
+        // Only use localStorage if cloud hasn't loaded better data
+        if (!data.projects || data.projects.length === 0) {
+          data = parsed;
+        }
         if (key !== STORAGE_KEY) {
           localStorage.setItem(STORAGE_KEY, saved);
         }
@@ -324,9 +347,79 @@ function loadData() {
       } catch(e) { /* corrupt data, try next */ }
     }
   }
-  // No valid saved data found — use defaults
-  initDefaults();
-  saveAll(); // persist defaults immediately
+  if (data.projects.length === 0) {
+    initDefaults();
+  }
+}
+
+async function pullFromCloud() {
+  if (!GITHUB_TOKEN) return;
+  try {
+    const resp = await fetch(`${API_BASE}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${DATA_FILE}`, {
+      headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (!resp.ok) return;
+    const fileInfo = await resp.json();
+    dataSha = fileInfo.sha;
+    const content = JSON.parse(atob(fileInfo.content));
+    if (content && content.projects) {
+      data = content;
+      lastCloudSync = new Date();
+      // Also save to localStorage as backup
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      showToast('☁️ 已从云端加载最新数据');
+    }
+  } catch(e) {
+    console.warn('Cloud pull failed:', e.message);
+  }
+}
+
+async function pushToCloud() {
+  if (!GITHUB_TOKEN) return false;
+  if (cloudSyncing) return false;
+  cloudSyncing = true;
+  try {
+    syncTableToData();
+    syncClientsToData();
+    data.updatedAt = new Date().toISOString();
+    const jsonStr = JSON.stringify(data, null, 2);
+    const base64 = btoa(unescape(encodeURIComponent(jsonStr)));
+
+    const body = {
+      message: `Update dashboard data [${new Date().toLocaleString('zh-CN')}]`,
+      content: base64,
+      sha: dataSha
+    };
+
+    const resp = await fetch(`${API_BASE}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${DATA_FILE}`, {
+      method: 'PUT',
+      headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (resp.ok) {
+      const result = await resp.json();
+      dataSha = result.content.sha;
+      lastCloudSync = new Date();
+      // Also backup to localStorage
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      return true;
+    } else {
+      const err = await resp.json();
+      if (err.message && err.message.includes('SHA')) {
+        // SHA mismatch — someone else updated, pull first then retry
+        await pullFromCloud();
+        dataSha = null; // will be re-fetched
+        showToast('⚠️ 数据冲突，已刷新为最新版本，请重试保存');
+      }
+      return false;
+    }
+  } catch(e) {
+    console.warn('Cloud push failed:', e.message);
+    return false;
+  } finally {
+    cloudSyncing = false;
+  }
 }
 function initDefaults() {
   data.projects = JSON.parse(JSON.stringify(defaultProjects));
@@ -334,11 +427,24 @@ function initDefaults() {
   data.weekly = JSON.parse(JSON.stringify(defaultWeekly));
 }
 function saveAll() {
+  // Save to localStorage always
   syncTableToData();
   syncClientsToData();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   refreshDashboard();
-  showToast('✅ 数据已保存 ' + new Date().toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+
+  // Push to cloud if token configured
+  if (GITHUB_TOKEN) {
+    pushToCloud().then(success => {
+      if (success) {
+        showToast('☁️ 数据已同步到云端 ' + new Date().toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+      } else {
+        showToast('✅ 本地已保存（云端同步失败，请检查网络）');
+      }
+    });
+  } else {
+    showToast('✅ 数据已保存到本地 ' + new Date().toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+  }
 }
 
 function exportBackup() {
@@ -948,8 +1054,79 @@ function exportCSV() {
 }
 
 // ========================================
+// CLOUD SETTINGS
+// ========================================
+function openCloudSettings() {
+  const modal = document.getElementById('cloud-modal');
+  modal.style.display = 'flex';
+  document.getElementById('token-input').value = GITHUB_TOKEN;
+  updateCloudStatusUI();
+}
+
+function saveCloudToken() {
+  const token = document.getElementById('token-input').value.trim();
+  if (!token) {
+    showToast('⚠️ 请输入 GitHub Token');
+    return;
+  }
+  if (!token.startsWith('ghp_') && !token.startsWith('github_pat_')) {
+    showToast('⚠️ Token 格式不正确，应以 ghp_ 或 github_pat_ 开头');
+    return;
+  }
+  GITHUB_TOKEN = token;
+  localStorage.setItem('hainan_github_token', token);
+  document.getElementById('cloud-modal').style.display = 'none';
+  updateCloudStatusUI();
+  // Initial pull
+  pullFromCloud().then(() => {
+    renderPipeline();
+    renderClients();
+    renderWeekly();
+    refreshDashboard();
+    showToast('☁️ 云同步已连接，数据已从云端加载');
+  });
+}
+
+function disconnectCloud() {
+  GITHUB_TOKEN = '';
+  localStorage.removeItem('hainan_github_token');
+  dataSha = null;
+  lastCloudSync = null;
+  document.getElementById('cloud-modal').style.display = 'none';
+  updateCloudStatusUI();
+  showToast('☁️ 已断开云同步连接');
+}
+
+function updateCloudStatusUI() {
+  const btn = document.getElementById('cloud-btn');
+  const text = document.getElementById('cloud-status-text');
+  const detail = document.getElementById('cloud-status-detail');
+  const disconnectBtn = document.getElementById('cloud-disconnect-btn');
+
+  if (GITHUB_TOKEN) {
+    text.textContent = '已连接';
+    btn.style.background = 'rgba(5,150,105,.3)';
+    if (detail) {
+      detail.innerHTML = '状态：<b style="color:#059669;">已连接</b>'
+        + (lastCloudSync ? ' | 上次同步：' + lastCloudSync.toLocaleString('zh-CN') : '')
+        + '<br>仓库：github.com/' + GITHUB_OWNER + '/' + GITHUB_REPO
+        + '<br>数据文件：' + DATA_FILE;
+    }
+    if (disconnectBtn) disconnectBtn.style.display = '';
+  } else {
+    text.textContent = '未连接';
+    btn.style.background = 'rgba(255,255,255,.1)';
+    if (detail) {
+      detail.innerHTML = '状态：<b style="color:#dc2626;">未连接</b><br>配置后数据自动同步到 GitHub Pages，你与海南同事可同时编辑。';
+    }
+    if (disconnectBtn) disconnectBtn.style.display = 'none';
+  }
+}
+
+// ========================================
 // INIT
 // ========================================
+updateCloudStatusUI();
 loadData();
 renderPipeline();
 renderClients();
@@ -961,13 +1138,46 @@ setInterval(() => {
   syncTableToData();
   syncClientsToData();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  if (GITHUB_TOKEN && !cloudSyncing) {
+    pushToCloud();
+  }
 }, 30000);
 
 window.addEventListener('beforeunload', () => {
   syncTableToData();
   syncClientsToData();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  if (GITHUB_TOKEN && !cloudSyncing) {
+    // Use sendBeacon for reliability during page unload
+    const jsonStr = JSON.stringify(data);
+    const base64 = btoa(unescape(encodeURIComponent(jsonStr)));
+    fetch(`${API_BASE}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${DATA_FILE}`, {
+      method: 'PUT', keepalive: true,
+      headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: 'Auto-save on page close', content: base64, sha: dataSha })
+    });
+  }
 });
 </script>
+<!-- Cloud Settings Modal -->
+<div id="cloud-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:10000;justify-content:center;align-items:center;">
+  <div style="background:#fff;border-radius:12px;padding:28px;width:460px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+    <h3 style="margin:0 0 6px 0;font-size:18px;color:#1a1a2e;">☁️ 云同步设置</h3>
+    <p style="margin:0 0 16px 0;font-size:12px;color:#6b7280;">配置 GitHub Token 后，数据将自动同步到云端，你与海南同事可同时编辑、互看更新。</p>
+    <label style="font-size:13px;font-weight:600;color:#1f2937;">GitHub Personal Access Token</label>
+    <input id="token-input" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;margin:6px 0 12px 0;box-sizing:border-box;">
+    <p style="font-size:11px;color:#6b7280;margin:0 0 16px 0;">
+      ① 前往 <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--blue);">github.com/settings/tokens</a> 创建 Token<br>
+      ② 勾选 <b>repo</b> 权限 → 生成 → 复制粘贴到这里<br>
+      ③ Token 保存在本机 localStorage，不会上传到其他地方
+    </p>
+    <div id="cloud-status-detail" style="font-size:12px;color:#6b7280;margin-bottom:16px;padding:8px 12px;background:#f3f4f6;border-radius:6px;"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn" style="background:#e5e7eb;color:#374151;" onclick="document.getElementById('cloud-modal').style.display='none'">取消</button>
+      <button class="btn btn-red" id="cloud-disconnect-btn" style="display:none;" onclick="disconnectCloud()">断开连接</button>
+      <button class="btn btn-primary" onclick="saveCloudToken()">保存并连接</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
