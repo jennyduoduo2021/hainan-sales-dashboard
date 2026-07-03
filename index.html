@@ -361,7 +361,7 @@ async function pullFromCloud() {
     if (!resp.ok) return;
     const fileInfo = await resp.json();
     dataSha = fileInfo.sha;
-    const content = JSON.parse(atob(fileInfo.content));
+    const content = JSON.parse(decodeURIComponent(escape(atob(fileInfo.content))));
     if (content && content.projects) {
       data = content;
       lastCloudSync = new Date();
@@ -401,21 +401,27 @@ async function pushToCloud() {
       const result = await resp.json();
       dataSha = result.content.sha;
       lastCloudSync = new Date();
-      // Also backup to localStorage
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       return true;
     } else {
-      const err = await resp.json();
+      const err = await resp.json().catch(() => ({}));
+      console.error('Push error:', resp.status, err.message || resp.statusText);
       if (err.message && err.message.includes('SHA')) {
-        // SHA mismatch — someone else updated, pull first then retry
         await pullFromCloud();
-        dataSha = null; // will be re-fetched
+        dataSha = null;
         showToast('⚠️ 数据冲突，已刷新为最新版本，请重试保存');
+      } else if (resp.status === 401) {
+        showToast('🔐 Token 无效或已过期，请重新设置');
+      } else if (resp.status === 403) {
+        showToast('🔐 Token 权限不足，需要勾选 repo 权限');
+      } else {
+        showToast('☁️ 同步失败: ' + (err.message || resp.statusText || '网络不通'));
       }
       return false;
     }
   } catch(e) {
-    console.warn('Cloud push failed:', e.message);
+    console.error('Cloud push error:', e.message);
+    showToast('☁️ 同步失败: ' + e.message);
     return false;
   } finally {
     cloudSyncing = false;
