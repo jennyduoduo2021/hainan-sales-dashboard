@@ -358,7 +358,10 @@ async function pullFromCloud() {
     const resp = await fetch(`${API_BASE}/repos/${GITEE_OWNER}/${GITEE_REPO}/contents/${DATA_FILE}?access_token=${GITEE_TOKEN}`, {
       headers: { 'Accept': 'application/json' }
     });
-    if (!resp.ok) return;
+    if (!resp.ok) {
+      console.warn('Cloud pull failed:', resp.status);
+      return;
+    }
     const fileInfo = await resp.json();
     dataSha = fileInfo.sha;
     const content = JSON.parse(decodeURIComponent(escape(atob(fileInfo.content))));
