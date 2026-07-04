@@ -59,13 +59,15 @@ body { font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; background: var(-
 .table-wrap.expanded { max-height: none; overflow-y: visible; }
 table { width: 100%; border-collapse: collapse; font-size: 12px; }
 thead { position: sticky; top: 0; z-index: 2; }
-th { background: var(--primary); color: #fff; padding: 10px 8px; text-align: left; font-weight: 500; white-space: nowrap; }
+th { background: var(--primary); color: #fff; padding: 10px 6px; text-align: left; font-weight: 500; white-space: normal; word-break: break-word; line-height: 1.3; }
+.num-col { min-width: 70px; width: 80px; }
+.num-header { min-width: 70px; width: 80px; }
 td { padding: 8px; border-bottom: 1px solid var(--border); }
 tr:hover td { background: #f9fafb; }
 td[contenteditable="true"] { outline: 2px solid transparent; transition: .15s; cursor: text; }
 .followup-cell { min-width: 280px !important; max-width: 400px; white-space: pre-wrap; word-break: break-word; }
 .note-cell { min-width: 200px !important; max-width: 300px; white-space: pre-wrap; word-break: break-word; }
-td select { min-width: 120px; max-width: 140px; font-family: inherit; }
+td select { min-width: 90px; max-width: 110px; font-family: inherit; font-size: 11px; }
 /* Stage badges */
 .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; color: #fff; white-space: nowrap; }
 .badge-fea { background: var(--red); }
@@ -194,10 +196,10 @@ td select { min-width: 120px; max-width: 140px; font-family: inherit; }
             <th>序号</th>
             <th>项目名称</th>
             <th>阶段</th>
-            <th>报价金额(万)</th>
-            <th>合同金额(万)</th>
-            <th>已收款项(万)</th>
-            <th>应收款项(万)</th>
+            <th class="num-header">报价<br>金额(万)</th>
+            <th class="num-header">合同<br>金额(万)</th>
+            <th class="num-header">已收<br>款项(万)</th>
+            <th class="num-header">应收<br>款项(万)</th>
             <th>赢单信心</th>
             <th>预计成交</th>
             <th style="min-width:280px">跟进过程</th>
@@ -588,10 +590,10 @@ function renderPipeline() {
       <td>${p.id}</td>
       <td contenteditable="true" data-field="name" data-id="${p.id}" class="editable">${p.name||''}</td>
       <td>${selectHTML('stage', p.stage, STAGE_OPTIONS, p.id)}</td>
-      <td contenteditable="true" data-field="quoteAmount" data-id="${p.id}" class="editable num-cell">${p.quoteAmount||''}</td>
-      <td contenteditable="true" data-field="contract" data-id="${p.id}" class="editable num-cell">${p.contract||''}</td>
-      <td contenteditable="true" data-field="collected" data-id="${p.id}" class="editable num-cell">${p.collected||''}</td>
-      <td class="readonly receivable-cell" data-id="${p.id}">${calcReceivable(p)}</td>
+      <td contenteditable="true" data-field="quoteAmount" data-id="${p.id}" class="editable num-col">${p.quoteAmount||''}</td>
+      <td contenteditable="true" data-field="contract" data-id="${p.id}" class="editable num-col">${p.contract||''}</td>
+      <td contenteditable="true" data-field="collected" data-id="${p.id}" class="editable num-col">${p.collected||''}</td>
+      <td class="readonly receivable-cell num-col" data-id="${p.id}">${calcReceivable(p)}</td>
       <td>${selectHTML('confidence', p.confidence, CONF_OPTIONS, p.id)}</td>
       <td contenteditable="true" data-field="closeMonth" data-id="${p.id}" class="editable">${p.closeMonth||''}</td>
       <td contenteditable="true" data-field="followUp" data-id="${p.id}" class="editable followup-cell">${p.followUp||''}</td>
