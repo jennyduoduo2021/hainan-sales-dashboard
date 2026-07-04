@@ -557,7 +557,6 @@ function importBackup() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         renderPipeline();
         renderClients();
-        renderWeekly();
         refreshDashboard();
         showToast('📤 备份恢复成功！' + (backup.exportedAt ? ' 备份时间：' + new Date(backup.exportedAt).toLocaleString('zh-CN') : ''));
       } catch(err) {
@@ -1419,7 +1418,6 @@ function saveCloudToken() {
   pullFromCloud().then(() => {
     renderPipeline();
     renderClients();
-    renderWeekly();
     refreshDashboard();
   });
 }
