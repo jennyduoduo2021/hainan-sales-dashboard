@@ -255,7 +255,8 @@ td select { min-width: 88px; max-width: 110px; font-family: inherit; font-size: 
   <!-- Weekly Tab -->
   <div id="tab-weekly" class="tab-content">
     <div class="toolbar">
-      <span class="info">📊 每周活动量追踪 | 目标：拜访≥8 方案≥2 线索≥2 新联系人≥2</span>
+      <span class="info">📊 每周活动量追踪 | 编辑本周数据后点击「AI分析」自动生成总结</span>
+      <button class="btn btn-primary" style="padding:6px 14px;font-size:12px;" onclick="generateWeeklySummary()">🤖 AI 生成总结</button>
     </div>
     <div class="table-wrap">
       <table id="tbl-weekly">
@@ -265,6 +266,8 @@ td select { min-width: 88px; max-width: 110px; font-family: inherit; font-size: 
         <tbody></tbody>
       </table>
     </div>
+    <!-- AI Summary Panel -->
+    <div id="weekly-summary-panel" style="display:none;margin:16px;padding:20px;background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border-radius:10px;border:1px solid #bae6fd;"></div>
   </div>
 
 </div>
@@ -597,7 +600,7 @@ function renderPipeline() {
       <td contenteditable="true" data-field="quoteAmount" data-id="${p.id}" class="editable num-col">${p.quoteAmount||''}</td>
       <td contenteditable="true" data-field="contract" data-id="${p.id}" class="editable num-col">${p.contract||''}</td>
       <td contenteditable="true" data-field="collected" data-id="${p.id}" class="editable num-col">${p.collected||''}</td>
-      <td class="readonly receivable-cell num-col" data-id="${p.id}">${calcReceivable(p)}</td>
+      <td>${calcReceivable(p)}</td>
       <td>${selectHTML('confidence', p.confidence, CONF_OPTIONS, p.id)}</td>
       <td contenteditable="true" data-field="closeMonth" data-id="${p.id}" class="editable">${p.closeMonth||''}</td>
       <td contenteditable="true" data-field="followUp" data-id="${p.id}" class="editable followup-cell">${p.followUp||''}</td>
@@ -788,6 +791,141 @@ function renderWeekly() {
       data.weekly[idx][field] = e.target.textContent.trim();
     });
   });
+}
+
+// ========================================
+// AI WEEKLY SUMMARY GENERATOR
+// ========================================
+function generateWeeklySummary() {
+  // Sync current data first
+  syncTableToData();
+  syncClientsToData();
+
+  const panel = document.getElementById('weekly-summary-panel');
+  const now = new Date();
+  const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay() + 1);
+  const weekEnd = new Date(now); weekEnd.setDate(now.getDate() - now.getDay() + 7);
+
+  // ---- Analyze projects ----
+  const projects = data.projects;
+  const activeProjects = projects.filter(p => p.stage !== '交付完成' && p.stage !== '已丢单');
+  const won = projects.filter(p =>
+    ['我司实施阶段','我司验收阶段','交付完成'].includes(p.stage)
+  );
+  const atRisk = projects.filter(p => p.blocker && p.blocker.trim());
+
+  // ---- Analyze clients ----
+  const clients = data.clients;
+  const activeClients = clients.filter(c => c.active === '是');
+  const highPotential = clients.filter(c => c.potential === '高');
+  const needFollow = clients.filter(c => c.lastContact && c.lastContact.trim());
+
+  // ---- Weekly data ----
+  const weekly = data.weekly;
+  const thisWeek = weekly.find(w => w.visits || w.proposals || w.leads || w.contacts);
+  const totalVisits = weekly.reduce((s, w) => s + (parseInt(w.visits) || 0), 0);
+  const totalProposals = weekly.reduce((s, w) => s + (parseInt(w.proposals) || 0), 0);
+  const totalLeads = weekly.reduce((s, w) => s + (parseInt(w.leads) || 0), 0);
+
+  // ---- Suggestions ----
+  let suggestions = [];
+  if (highPotential.filter(c => c.active === '否').length >= 3) {
+    suggestions.push('有 ' + highPotential.filter(c => c.active === '否').length + ' 个高潜力客户近期无互动，建议本周主动联系：' + highPotential.filter(c => c.active === '否').map(c => c.name).join('、'));
+  }
+  const blockingProjects = projects.filter(p => p.blocker && p.blocker.trim() && p.stage !== '已丢单');
+  if (blockingProjects.length > 0) {
+    suggestions.push(blockingProjects.length + ' 个项目存在卡点/风险，建议逐个制定突破方案：' + blockingProjects.map(p => p.name + '（' + p.blocker + '）').join('；'));
+  }
+  const quoteProjects = projects.filter(p => p.stage === '我司报价阶段');
+  if (quoteProjects.length > 0) {
+    suggestions.push(quoteProjects.length + ' 个项目处于报价阶段，建议本周跟进客户反馈：' + quoteProjects.map(p => p.name).join('、'));
+  }
+  if (thisWeek && (parseInt(thisWeek.visits) || 0) < 2) {
+    suggestions.push('本周拜访次数偏低（目标≥3），建议增加客户现场拜访频次');
+  }
+  if (totalProposals < 2) {
+    suggestions.push('方案/报价数偏低（周目标≥2），检查是否有待跟进的需求可转化为报价');
+  }
+  const followUpProjects = projects.filter(p => p.followUp && p.followUp.includes('下周'));
+  if (followUpProjects.length > 0) {
+    suggestions.push('有 ' + followUpProjects.length + ' 个项目需要下周跟进行动，已标注在项目表格中');
+  }
+
+  // ---- Build HTML ----
+  const dateRange = weekStart.getMonth()+1 + '/' + weekStart.getDate() + ' - ' + weekEnd.getMonth()+1 + '/' + weekEnd.getDate();
+  let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">';
+  html += '<h3 style="margin:0;font-size:16px;color:#0f3460;">📊 周度总结 ' + dateRange + '</h3>';
+  html += '<span style="font-size:11px;color:#94a3b8;">生成时间：' + now.toLocaleString('zh-CN') + '</span></div>';
+  html += '<hr style="border-color:#bae6fd;margin:12px 0;">';
+
+  // Section 1: Overview
+  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">';
+  html += kpiBox('🎯 跟进中项目', activeProjects.length + ' 个', '#2563eb');
+  html += kpiBox('✅ 已签约/实施中', won.length + ' 个', '#059669');
+  html += kpiBox('⚡ 高潜力客户', highPotential.length + ' 个', '#d97706');
+  html += kpiBox('⚠️ 有卡点项目', atRisk.length + ' 个', '#dc2626');
+  html += '</div>';
+
+  // Section 2: Project progress
+  html += '<h4 style="color:#1e40af;margin:16px 0 8px;">📋 项目进展摘要</h4>';
+  html += '<table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:12px;">';
+  html += '<tr style="background:#e0f2fe;"><th style="padding:6px 8px;text-align:left;">项目名称</th><th style="padding:6px 8px;text-align:left;">阶段</th><th style="padding:6px 8px;text-align:left;">本周关键进展</th></tr>';
+  projects.forEach(p => {
+    const latest = p.followUp ? p.followUp.split('\n').pop().replace(/^[①②③④⑤]\s*/, '') : '—';
+    html += '<tr style="border-bottom:1px solid #e0f2fe;"><td style="padding:6px 8px;font-weight:500;">' + escHtml(p.name) + '</td><td style="padding:6px 8px;">' + escHtml(p.stage) + '</td><td style="padding:6px 8px;">' + escHtml(latest) + '</td></tr>';
+  });
+  html += '</table>';
+
+  // Section 3: Client interaction
+  html += '<h4 style="color:#1e40af;margin:16px 0 8px;">👥 客户互动摘要</h4>';
+  html += '<p style="font-size:12px;color:#475569;margin:4px 0;">本周联系客户：' + needFollow.map(c => c.name).join('、') + '</p>';
+
+  // Section 4: Suggestions
+  if (suggestions.length > 0) {
+    html += '<h4 style="color:#b45309;margin:16px 0 8px;">💡 下周重点建议</h4>';
+    html += '<ol style="font-size:12px;color:#475569;padding-left:20px;line-height:2;">';
+    suggestions.forEach(s => { html += '<li>' + escHtml(s) + '</li>'; });
+    html += '</ol>';
+  }
+
+  // Section 5: Risk radar
+  if (atRisk.length > 0) {
+    html += '<h4 style="color:#dc2626;margin:16px 0 8px;">🚨 风险关注</h4>';
+    atRisk.forEach(p => {
+      html += '<div style="background:#fef2f2;padding:8px 12px;border-radius:6px;margin:4px 0;font-size:12px;">';
+      html += '<b>' + escHtml(p.name) + '</b>：' + escHtml(p.blocker) + '</div>';
+    });
+  }
+
+  html += '<div style="margin-top:16px;display:flex;gap:8px;">';
+  html += '<button class="btn btn-primary" style="font-size:11px;" onclick="copySummary()">📋 复制总结</button>';
+  html += '<button class="btn btn-ghost" style="font-size:11px;background:#475569;color:#fff;" onclick="document.getElementById(\'weekly-summary-panel\').style.display=\'none\'">关闭</button>';
+  html += '</div>';
+
+  panel.innerHTML = html;
+  panel.style.display = 'block';
+  panel.scrollIntoView({ behavior: 'smooth' });
+
+  showToast('🤖 周度总结已生成');
+}
+
+function kpiBox(label, value, color) {
+  return '<div style="background:#fff;border-radius:8px;padding:12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.06);">' +
+    '<div style="font-size:11px;color:#6b7280;margin-bottom:4px;">' + label + '</div>' +
+    '<div style="font-size:22px;font-weight:700;color:' + color + ';">' + value + '</div></div>';
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function copySummary() {
+  const panel = document.getElementById('weekly-summary-panel');
+  const text = panel.innerText;
+  navigator.clipboard.writeText(text).then(() => showToast('📋 总结已复制到剪贴板'));
 }
 
 // ========================================
