@@ -63,6 +63,8 @@ th { background: var(--primary); color: #fff; padding: 10px 8px; text-align: lef
 td { padding: 8px; border-bottom: 1px solid var(--border); }
 tr:hover td { background: #f9fafb; }
 td[contenteditable="true"] { outline: 2px solid transparent; transition: .15s; cursor: text; }
+.followup-cell { min-width: 280px !important; max-width: 400px; white-space: pre-wrap; word-break: break-word; }
+.note-cell { min-width: 200px !important; max-width: 300px; white-space: pre-wrap; word-break: break-word; }
 td select { min-width: 120px; max-width: 140px; font-family: inherit; }
 /* Stage badges */
 .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; color: #fff; white-space: nowrap; }
@@ -198,11 +200,11 @@ td select { min-width: 120px; max-width: 140px; font-family: inherit; }
             <th>应收款项(万)</th>
             <th>赢单信心</th>
             <th>预计成交</th>
-            <th>跟进过程</th>
+            <th style="min-width:280px">跟进过程</th>
             <th>卡点/风险</th>
             <th>关键联系人</th>
             <th>竞对</th>
-            <th>备注</th>
+            <th style="min-width:200px">备注</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -596,7 +598,7 @@ function renderPipeline() {
       <td contenteditable="true" data-field="blocker" data-id="${p.id}" class="editable">${p.blocker||''}</td>
       <td contenteditable="true" data-field="contact" data-id="${p.id}" class="editable">${p.contact||''}</td>
       <td contenteditable="true" data-field="competitor" data-id="${p.id}" class="editable">${p.competitor||''}</td>
-      <td contenteditable="true" data-field="note" data-id="${p.id}" class="editable">${p.note||''}</td>
+      <td contenteditable="true" data-field="note" data-id="${p.id}" class="editable note-cell">${p.note||''}</td>
     `;
     tbody.appendChild(tr);
   });
