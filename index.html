@@ -352,6 +352,38 @@ function loadData() {
   }
 }
 
+function dataRichness(d) {
+  if (!d || !d.projects) return 0;
+  let score = 0;
+  for (const p of d.projects) {
+    if (p.quoteAmount) score += 5;
+    if (p.contract) score += 5;
+    if (p.collected) score += 5;
+    if (p.confidence) score += 3;
+    if (p.closeMonth) score += 3;
+    if (p.followUp) score += 2;
+    if (p.blocker) score += 2;
+    if (p.competitor) score += 1;
+    if (p.note) score += 1;
+  }
+  for (const c of (d.clients || [])) {
+    if (c.phone) score += 3;
+    if (c.lastContact) score += 3;
+    if (c.notes) score += 2;
+    if (c.nextFollow) score += 2;
+    if (c.remark) score += 1;
+  }
+  for (const w of (d.weekly || [])) {
+    if (w.range) score += 1;
+    if (w.visits) score += 2;
+    if (w.proposals) score += 2;
+    if (w.leads) score += 2;
+    if (w.contacts) score += 2;
+    if (w.note) score += 1;
+  }
+  return score;
+}
+
 async function pullFromCloud() {
   if (!GITEE_TOKEN) return;
   try {
@@ -364,12 +396,33 @@ async function pullFromCloud() {
     }
     const fileInfo = await resp.json();
     dataSha = fileInfo.sha;
-    const content = JSON.parse(decodeURIComponent(escape(atob(fileInfo.content))));
-    if (content && content.projects) {
-      data = content;
+    const cloudData = JSON.parse(decodeURIComponent(escape(atob(fileInfo.content))));
+    if (!cloudData || !cloudData.projects) return;
+
+    // Compare richness: keep whichever has more user edits
+    const localSaved = localStorage.getItem(STORAGE_KEY);
+    const localData = localSaved ? JSON.parse(localSaved) : null;
+    const cloudRichness = dataRichness(cloudData);
+    const localRichness = localData ? dataRichness(localData) : 0;
+
+    if (localRichness > cloudRichness) {
+      // Local has more edits — keep local and push to cloud
+      data = localData;
+      dataSha = fileInfo.sha;
       lastCloudSync = new Date();
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-      showToast('☁️ 已从云端加载最新数据');
+      showToast('☁️ 本地数据更丰富，已保留本地版本并同步到云端');
+      pushToCloud();
+    } else {
+      // Cloud is same or richer — use cloud
+      data = cloudData;
+      lastCloudSync = new Date();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      if (cloudRichness > localRichness) {
+        showToast('☁️ 已从云端加载最新数据');
+      } else {
+        showToast('☁️ 云同步已连接，数据一致');
+      }
     }
   } catch(e) {
     console.warn('Cloud pull failed:', e.message);
@@ -1092,7 +1145,6 @@ function saveCloudToken() {
     renderClients();
     renderWeekly();
     refreshDashboard();
-    showToast('☁️ 云同步已连接，数据已从云端加载');
   });
 }
 
