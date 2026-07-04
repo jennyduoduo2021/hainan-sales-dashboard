@@ -186,7 +186,6 @@ td select { min-width: 88px; max-width: 110px; font-family: inherit; font-size: 
   <div class="tabs">
     <button class="tab active" onclick="switchTab('pipeline')">📋 项目Pipeline</button>
     <button class="tab" onclick="switchTab('clients')">👥 客户管理</button>
-    <button class="tab" onclick="switchTab('weekly')">📊 周度记录</button>
   </div>
 
   <!-- Pipeline Tab -->
@@ -259,21 +258,6 @@ td select { min-width: 88px; max-width: 110px; font-family: inherit; font-size: 
             <th>关联项目</th>
             <th>备注</th>
           </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- Weekly Tab -->
-  <div id="tab-weekly" class="tab-content">
-    <div class="toolbar">
-      <span class="info">📊 周度活动量追踪 | 目标：拜访≥3 方案≥2 线索≥2 新联系人≥2</span>
-    </div>
-    <div class="table-wrap">
-      <table id="tbl-weekly">
-        <thead>
-          <tr><th>周次</th><th>日期范围</th><th>拜访次数</th><th>方案/报价</th><th>新线索</th><th>新联系人</th><th>备注</th></tr>
         </thead>
         <tbody></tbody>
       </table>
@@ -783,34 +767,6 @@ function syncClientsToData() {
     const field = sel.dataset.field;
     const c = data.clients.find(c => c.id === id);
     if (c) c[field] = sel.value;
-  });
-}
-
-// ========================================
-// RENDER WEEKLY TABLE
-// ========================================
-function renderWeekly() {
-  const tbody = document.querySelector('#tbl-weekly tbody');
-  tbody.innerHTML = '';
-  data.weekly.forEach((w, i) => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${w.week}</td>
-      <td contenteditable="true" data-field="range" data-wid="${i}" class="editable-w">${w.range||''}</td>
-      <td contenteditable="true" data-field="visits" data-wid="${i}" class="editable-w num-cell">${w.visits||''}</td>
-      <td contenteditable="true" data-field="proposals" data-wid="${i}" class="editable-w num-cell">${w.proposals||''}</td>
-      <td contenteditable="true" data-field="leads" data-wid="${i}" class="editable-w num-cell">${w.leads||''}</td>
-      <td contenteditable="true" data-field="contacts" data-wid="${i}" class="editable-w num-cell">${w.contacts||''}</td>
-      <td contenteditable="true" data-field="note" data-wid="${i}" class="editable-w">${w.note||''}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-  document.querySelectorAll('.editable-w').forEach(el => {
-    el.addEventListener('blur', e => {
-      const idx = parseInt(e.target.dataset.wid);
-      const field = e.target.dataset.field;
-      data.weekly[idx][field] = e.target.textContent.trim();
-    });
   });
 }
 
