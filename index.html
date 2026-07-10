@@ -1294,54 +1294,55 @@ async function exportShareVersion() {
 
   showToast('📸 正在生成截图，请稍候...');
 
+  // Store references and original state BEFORE any changes
+  const tabPipeline = document.getElementById('tab-pipeline');
+  const tabClients = document.getElementById('tab-clients');
+  const container = document.querySelector('.container');
+  const wasPipelineActive = tabPipeline.classList.contains('active');
+  const wasClientsActive = tabClients.classList.contains('active');
+
   try {
-    // Make BOTH tab contents visible at once for the screenshot
-    const tabPipeline = document.getElementById('tab-pipeline');
-    const tabClients = document.getElementById('tab-clients');
-
-    // Store original display states
-    const wasPipelineVisible = tabPipeline.classList.contains('active');
-    const wasClientsVisible = tabClients.classList.contains('active');
-
-    // Force both to display:block, stack vertically
+    // Force both tab contents visible at once, stacked vertically
     tabPipeline.style.display = 'block';
     tabPipeline.classList.add('active');
     tabClients.style.display = 'block';
     tabClients.classList.add('active');
-    // Add a gap between them
     tabClients.style.marginTop = '20px';
 
-    await new Promise(r => setTimeout(r, 400));
-
-    const container = document.querySelector('.container');
+    // Fix container width for consistent rendering
     container.style.maxWidth = 'none';
-    container.style.overflow = 'visible';
+    container.style.width = Math.max(
+      tabPipeline.scrollWidth,
+      tabClients.scrollWidth,
+      container.scrollWidth
+    ) + 'px';
+
+    await new Promise(r => setTimeout(r, 500));
 
     const canvas = await html2canvas(container, {
       backgroundColor: '#f0f2f5',
       scale: 2,
       useCORS: true,
       logging: false,
-      width: container.scrollWidth + 40,
-      height: container.scrollHeight + 60,
-      windowWidth: container.scrollWidth + 60,
-      windowHeight: container.scrollHeight + 80
+      allowTaint: true
     });
 
-    // Restore original state
+    // Restore
     container.style.maxWidth = '';
+    container.style.width = '';
     container.style.overflow = '';
     tabPipeline.style.display = '';
     tabClients.style.display = '';
     tabClients.style.marginTop = '';
-    if (!wasPipelineVisible) tabPipeline.classList.remove('active');
-    if (!wasClientsVisible) tabClients.classList.remove('active');
+    tabPipeline.classList.toggle('active', wasPipelineActive);
+    tabClients.classList.toggle('active', wasClientsActive);
 
-    // Add title bar on top
+    // Compose final image with header bar
     const headerH = 48;
+    const padding = 10;
     const fullCanvas = document.createElement('canvas');
     fullCanvas.width = canvas.width;
-    fullCanvas.height = canvas.height + headerH + 10;
+    fullCanvas.height = canvas.height + headerH + padding;
     const ctx = fullCanvas.getContext('2d');
     ctx.fillStyle = '#1a1a2e';
     ctx.fillRect(0, 0, fullCanvas.width, headerH);
@@ -1349,9 +1350,8 @@ async function exportShareVersion() {
     ctx.font = 'bold 20px "Microsoft YaHei"';
     ctx.textAlign = 'center';
     ctx.fillText('海南驻点销售管理看板 - 广州赛通科技', fullCanvas.width / 2, 32);
-    ctx.drawImage(canvas, 0, headerH + 10);
+    ctx.drawImage(canvas, 0, headerH + padding);
 
-    // Download
     const blob = await new Promise(resolve => fullCanvas.toBlob(resolve, 'image/png'));
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1365,10 +1365,6 @@ async function exportShareVersion() {
   } catch(err) {
     console.error(err);
     alert('截图生成失败：' + err.message);
-  } finally {
-    // Restore the original active tab
-    tabPipeline.classList.toggle('active', wasPipelineVisible);
-    tabClients.classList.toggle('active', wasClientsVisible);
   }
 }
 
