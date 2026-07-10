@@ -1296,12 +1296,26 @@ async function exportShareVersion() {
 
   showToast('📸 正在生成截图，请稍候...');
 
+  // 1. Pre-capture chart pixels and pre-decode as Image objects
+  var sCanvas = document.getElementById('chartStage');
+  var fCanvas = document.getElementById('chartFinance');
+  var sData = sCanvas.toDataURL('image/png');
+  var fData = fCanvas.toDataURL('image/png');
+  var sW = sCanvas.width;   // pixel dimensions Chart.js set
+  var sH = sCanvas.height;
+  var fW = fCanvas.width;
+  var fH = fCanvas.height;
+
+  var sImg = new Image();
+  var fImg = new Image();
+  sImg.src = sData;
+  fImg.src = fData;
+  // decode() ensures images are fully decoded before we use them
+  await sImg.decode();
+  await fImg.decode();
+
+  // 2. Screenshot — use onclone to paint pre-decoded images onto cloned canvases
   var container = document.querySelector('.container');
-
-  // Pre-capture chart dataURLs — these survive the clone
-  var stageData = document.getElementById('chartStage').toDataURL('image/png');
-  var financeData = document.getElementById('chartFinance').toDataURL('image/png');
-
   try {
     var resultCanvas = await html2canvas(container, {
       backgroundColor: '#f0f2f5',
@@ -1310,13 +1324,12 @@ async function exportShareVersion() {
       logging: false,
       allowTaint: true,
       onclone: function(clonedDoc) {
-        // 1. Restore chart canvases from dataURLs in the clone
+        // Restore canvas pixels in the clone
         var cs = clonedDoc.getElementById('chartStage');
         var cf = clonedDoc.getElementById('chartFinance');
-        restoreCanvas(clonedDoc, cs, stageData);
-        restoreCanvas(clonedDoc, cf, financeData);
-
-        // 2. Show both tabs in the clone
+        if (cs) { cs.width = sW; cs.height = sH; cs.getContext('2d').drawImage(sImg, 0, 0, sW, sH); }
+        if (cf) { cf.width = fW; cf.height = fH; cf.getContext('2d').drawImage(fImg, 0, 0, fW, fH); }
+        // Show both tabs
         var cp = clonedDoc.getElementById('tab-pipeline');
         var cc = clonedDoc.getElementById('tab-clients');
         if (cp) { cp.style.display = 'block'; cp.classList.add('active'); }
@@ -1351,27 +1364,6 @@ async function exportShareVersion() {
   } catch(err) {
     console.error(err);
     alert('截图生成失败：' + err.message);
-  }
-}
-
-// Helper: draw a dataURL image onto a cloned canvas element
-function restoreCanvas(clonedDoc, clonedCanvas, dataURL) {
-  if (!clonedCanvas) return;
-  var ctx = clonedCanvas.getContext('2d');
-  var img = clonedDoc.createElement('img');
-  img.src = dataURL;
-  img.onload = function() {
-    clonedCanvas.width = img.naturalWidth;
-    clonedCanvas.height = img.naturalHeight;
-    ctx.drawImage(img, 0, 0);
-  };
-  // Sync draw — use Image from parent window
-  var winImg = new Image();
-  winImg.src = dataURL;
-  if (winImg.complete) {
-    clonedCanvas.width = winImg.naturalWidth;
-    clonedCanvas.height = winImg.naturalHeight;
-    ctx.drawImage(winImg, 0, 0);
   }
 }
 
