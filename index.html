@@ -618,6 +618,11 @@ function renderPipeline() {
   // Attach listeners
   document.querySelectorAll('#tbl-pipeline .editable').forEach(el => {
     el.addEventListener('blur', onCellEdit);
+    el.addEventListener('paste', function(e) {
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+      document.execCommand('insertText', false, text);
+    });
   });
   document.querySelectorAll('#tbl-pipeline select').forEach(sel => {
     sel.addEventListener('change', onSelectChange);
@@ -716,6 +721,11 @@ function renderClients() {
   });
   document.querySelectorAll('.editable-c').forEach(el => {
     el.addEventListener('blur', onClientEdit);
+    el.addEventListener('paste', function(e) {
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+      document.execCommand('insertText', false, text);
+    });
   });
   document.querySelectorAll('#tbl-clients select').forEach(sel => {
     sel.addEventListener('change', onClientSelect);
