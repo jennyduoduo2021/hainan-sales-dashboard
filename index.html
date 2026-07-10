@@ -1296,53 +1296,46 @@ async function exportShareVersion() {
 
   showToast('📸 正在生成截图，请稍候...');
 
+  // References we need throughout
   var tabPipeline = document.getElementById('tab-pipeline');
   var tabClients = document.getElementById('tab-clients');
   var stageCanvas = document.getElementById('chartStage');
   var financeCanvas = document.getElementById('chartFinance');
-
+  var container = document.querySelector('.container');
   var wasPipe = tabPipeline.classList.contains('active');
   var wasCli = tabClients.classList.contains('active');
 
-  // 1. Convert live chart canvases to static images SAME SIZE
-  var sw = stageCanvas.offsetWidth, sh = stageCanvas.offsetHeight;
-  var fw = financeCanvas.offsetWidth, fh = financeCanvas.offsetHeight;
+  // Capture chart canvases to Image elements (ensure they're loaded)
+  function canvasToImage(canvas, w, h) {
+    return new Promise(function(resolve) {
+      var img = new Image();
+      img.onload = function() { resolve(img); };
+      img.onerror = function() { resolve(null); };
+      img.src = canvas.toDataURL('image/png');
+      img.style.width = w + 'px';
+      img.style.height = h + 'px';
+      img.style.display = 'block';
+    });
+  }
 
-  var sData = stageCanvas.toDataURL('image/png');
-  var fData = financeCanvas.toDataURL('image/png');
+  var sImg = await canvasToImage(stageCanvas, stageCanvas.offsetWidth, stageCanvas.offsetHeight);
+  var fImg = await canvasToImage(financeCanvas, financeCanvas.offsetWidth, financeCanvas.offsetHeight);
 
-  var sParent = stageCanvas.parentNode;
-  var fParent = financeCanvas.parentNode;
+  // Swap live canvases with loaded static images
+  if (sImg) { sImg.style.cssText = 'width:100% !important;height:100% !important;display:block;'; stageCanvas.parentNode.replaceChild(sImg, stageCanvas); }
+  if (fImg) { fImg.style.cssText = 'width:100% !important;height:100% !important;display:block;'; financeCanvas.parentNode.replaceChild(fImg, financeCanvas); }
 
-  var sImg = document.createElement('img');
-  sImg.src = sData;
-  sImg.width = sw;
-  sImg.height = sh;
-  sImg.style.display = 'block';
-
-  var fImg = document.createElement('img');
-  fImg.src = fData;
-  fImg.width = fw;
-  fImg.height = fh;
-  fImg.style.display = 'block';
-
-  // 2. Swap canvases with their snapshot images (looks identical)
-  sParent.replaceChild(sImg, stageCanvas);
-  fParent.replaceChild(fImg, financeCanvas);
-
-  // 3. Show both tabs
+  // Show both tabs
   tabPipeline.style.display = 'block';
   tabPipeline.classList.add('active');
   tabClients.style.display = 'block';
   tabClients.classList.add('active');
   tabClients.style.marginTop = '20px';
 
-  // Wait for browser to paint
-  await new Promise(function(r) { requestAnimationFrame(function() { requestAnimationFrame(r); }); });
+  await new Promise(function(r) { setTimeout(r, 200); });
 
   try {
-    var container = document.querySelector('.container');
-    var canvas = await html2canvas(container, {
+    var resultCanvas = await html2canvas(container, {
       backgroundColor: '#f0f2f5',
       scale: 2,
       useCORS: true,
@@ -1350,19 +1343,19 @@ async function exportShareVersion() {
       allowTaint: true
     });
 
-    // Add title bar
-    var hh = 48;
+    // Title bar
+    var headerH = 48;
     var full = document.createElement('canvas');
-    full.width = canvas.width;
-    full.height = canvas.height + hh + 10;
+    full.width = resultCanvas.width;
+    full.height = resultCanvas.height + headerH + 10;
     var ctx = full.getContext('2d');
     ctx.fillStyle = '#1a1a2e';
-    ctx.fillRect(0, 0, full.width, hh);
+    ctx.fillRect(0, 0, full.width, headerH);
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 20px "Microsoft YaHei"';
     ctx.textAlign = 'center';
     ctx.fillText('海南驻点销售管理看板 - 广州赛通科技', full.width / 2, 32);
-    ctx.drawImage(canvas, 0, hh + 10);
+    ctx.drawImage(resultCanvas, 0, headerH + 10);
 
     var blob = await new Promise(function(r) { full.toBlob(r, 'image/png'); });
     var url = URL.createObjectURL(blob);
@@ -1371,13 +1364,11 @@ async function exportShareVersion() {
     a.download = '海南销售看板_' + new Date().toISOString().slice(0, 10) + '.png';
     a.click();
     URL.revokeObjectURL(url);
-
     showToast('📸 截图已导出！');
   } finally {
-    // Always restore: swap images back to real chart canvases
-    sParent.replaceChild(stageCanvas, sImg);
-    fParent.replaceChild(financeCanvas, fImg);
-
+    // Restore
+    if (sImg) sImg.parentNode.replaceChild(stageCanvas, sImg);
+    if (fImg) fImg.parentNode.replaceChild(financeCanvas, fImg);
     tabPipeline.style.display = '';
     tabClients.style.display = '';
     tabClients.style.marginTop = '';
