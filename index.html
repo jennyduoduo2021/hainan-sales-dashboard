@@ -50,12 +50,12 @@ body { font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; background: var(-
 .tab { padding: 10px 20px; background: #e5e7eb; border: none; cursor: pointer; font-size: 13px; font-weight: 500; border-radius: 8px 8px 0 0; transition: .2s; }
 .tab.active { background: var(--card); color: var(--blue); }
 .tab:hover:not(.active) { background: #d1d5db; }
-.tab-content { display: none; background: var(--card); border-radius: 0 var(--radius) var(--radius) var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.tab-content { display: none; background: var(--card); border-radius: 0 var(--radius) var(--radius) var(--radius); box-shadow: var(--shadow); }
 .tab-content.active { display: block; }
 /* Tables */
 .toolbar { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); gap: 12px; flex-wrap: wrap; }
 .toolbar .info { font-size: 12px; color: var(--text2); }
-.table-wrap { overflow-x: auto; }
+.table-wrap { }
 table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: auto; }
 thead { position: sticky; top: 0; z-index: 2; }
 th { background: var(--primary); color: #fff; padding: 8px 6px; text-align: left; font-weight: 500; white-space: normal; word-break: keep-all; line-height: 1.35; position: relative; vertical-align: top; }
@@ -1303,13 +1303,16 @@ async function exportShareVersion() {
 
     await new Promise(r => setTimeout(r, 500));
 
+    const pipelineTable = document.getElementById('tbl-pipeline');
     const pipelineCanvas = await html2canvas(document.getElementById('tab-pipeline'), {
       backgroundColor: '#ffffff',
       scale: 2,
       useCORS: true,
       logging: false,
-      width: document.getElementById('tbl-pipeline').scrollWidth + 40,
-      windowWidth: document.getElementById('tbl-pipeline').scrollWidth + 100
+      width: pipelineTable.scrollWidth + 40,
+      height: pipelineTable.scrollHeight + 200,
+      windowWidth: pipelineTable.scrollWidth + 100,
+      windowHeight: pipelineTable.scrollHeight + 400
     });
 
     // Clients screenshot — capture the FULL table
@@ -1320,13 +1323,16 @@ async function exportShareVersion() {
 
     await new Promise(r => setTimeout(r, 300));
 
+    const clientsTable = document.getElementById('tbl-clients');
     const clientsCanvas = await html2canvas(document.getElementById('tab-clients'), {
       backgroundColor: '#ffffff',
       scale: 2,
       useCORS: true,
       logging: false,
-      width: document.getElementById('tbl-clients').scrollWidth + 40,
-      windowWidth: document.getElementById('tbl-clients').scrollWidth + 100
+      width: clientsTable.scrollWidth + 40,
+      height: clientsTable.scrollHeight + 200,
+      windowWidth: clientsTable.scrollWidth + 100,
+      windowHeight: clientsTable.scrollHeight + 400
     });
 
     // Stitch vertically
