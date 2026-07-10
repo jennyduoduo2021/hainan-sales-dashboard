@@ -1321,38 +1321,28 @@ async function exportShareVersion() {
       cf.parentNode.replaceChild(img2, cf);
     }
 
-    // 3. 显示两个选项卡，移除表格中所有限制宽度的样式
+    // 3. 显示两个选项卡
     var tp = clone.querySelector('#tab-pipeline');
     var tc = clone.querySelector('#tab-clients');
     if (tp) { tp.style.display = 'block'; tp.classList.add('active'); }
     if (tc) { tc.style.display = 'block'; tc.classList.add('active'); tc.style.marginTop = '20px'; }
 
-    // 移除克隆中所有表格单元格的 max-width / white-space: nowrap 限制
-    clone.querySelectorAll('td, th').forEach(function(cell) {
-      cell.style.maxWidth = 'none';
-      cell.style.minWidth = 'auto';
-      cell.style.whiteSpace = 'normal';
-      cell.style.wordBreak = 'break-all';
-    });
-    clone.querySelectorAll('.badge, select, .badge-wrap, .tag').forEach(function(el) {
-      el.style.whiteSpace = 'normal';
-    });
-    clone.querySelectorAll('td select').forEach(function(s) {
-      s.style.minWidth = 'auto';
-      s.style.maxWidth = 'none';
-    });
-    clone.querySelectorAll('.followup-cell, .note-cell, .num-col, .num-header').forEach(function(c) {
-      c.style.maxWidth = 'none';
-      c.style.minWidth = 'auto';
-    });
+    // 注入样式表覆盖克隆中所有列宽/截断限制
+    var style = document.createElement('style');
+    style.textContent = [
+      '.container { max-width: none !important; width: auto !important; }',
+      'td, th { max-width: none !important; min-width: auto !important; white-space: normal !important; word-break: break-word !important; }',
+      '.followup-cell, .note-cell { max-width: none !important; min-width: auto !important; }',
+      '.num-col, .num-header { max-width: none !important; min-width: auto !important; }',
+      'td select { max-width: none !important; min-width: auto !important; }',
+      '.badge, .badge-wrap, select, .tag { white-space: normal !important; }',
+      'table { table-layout: auto !important; width: max-content !important; min-width: 100% !important; }',
+      'thead { position: static !important; }'
+    ].join('\n');
+    clone.insertBefore(style, clone.firstChild);
 
-    // 4. 计算表格需要的实际宽度
-    var tables = clone.querySelectorAll('table');
-    var tableWidth = 0;
-    tables.forEach(function(t) { tableWidth = Math.max(tableWidth, t.offsetWidth || t.scrollWidth || 0); });
-
-    // 5. 放到屏幕外渲染（用 absolute 避免 fixed 被视口裁剪）
-    clone.style.cssText = 'position:absolute;left:-9999px;top:0;z-index:1;max-width:none;width:' + Math.max(container.scrollWidth + 200, tableWidth + 60, 1800) + 'px;';
+    // 4. 放到屏幕外渲染（给足宽度让表格自然展开）
+    clone.style.cssText = 'position:absolute;left:-9999px;top:0;z-index:1;max-width:none;width:' + Math.max(container.scrollWidth + 400, 2400) + 'px;';
     clone.style.padding = '20px 24px';
     document.body.appendChild(clone);
 
