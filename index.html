@@ -1296,70 +1296,76 @@ async function exportShareVersion() {
 
   showToast('📸 正在生成截图，请稍候...');
 
+  var tabPipeline = document.getElementById('tab-pipeline');
+  var tabClients = document.getElementById('tab-clients');
+  var stageCanvas = document.getElementById('chartStage');
+  var financeCanvas = document.getElementById('chartFinance');
+  var stageBox = stageCanvas.parentElement;
+  var financeBox = financeCanvas.parentElement;
+  var stageW = stageCanvas.clientWidth;
+  var stageH = stageCanvas.clientHeight;
+  var finW = financeCanvas.clientWidth;
+  var finH = financeCanvas.clientHeight;
+
+  // Snapshot charts as identical-looking static images
+  var sImg = document.createElement('img');
+  var fImg = document.createElement('img');
+  sImg.src = stageCanvas.toDataURL('image/png');
+  fImg.src = financeCanvas.toDataURL('image/png');
+  sImg.style.cssText = 'width:' + stageW + 'px;height:' + stageH + 'px;display:block;';
+  fImg.style.cssText = 'width:' + finW + 'px;height:' + finH + 'px;display:block;';
+
+  // Show both tabs
+  var wasPipe = tabPipeline.classList.contains('active');
+  var wasCli = tabClients.classList.contains('active');
+  tabPipeline.style.display = 'block';
+  tabPipeline.classList.add('active');
+  tabClients.style.display = 'block';
+  tabClients.classList.add('active');
+  tabClients.style.marginTop = '20px';
+
   try {
-    // Convert live Chart.js canvases to static images first so they survive cloning
-    var stageCanvas = document.getElementById('chartStage');
-    var financeCanvas = document.getElementById('chartFinance');
-    var stageImg = document.createElement('img');
-    var financeImg = document.createElement('img');
-    stageImg.src = stageCanvas.toDataURL('image/png');
-    financeImg.src = financeCanvas.toDataURL('image/png');
-    stageImg.style.cssText = 'width:' + stageCanvas.clientWidth + 'px;height:' + stageCanvas.clientHeight + 'px;display:block;';
-    financeImg.style.cssText = 'width:' + financeCanvas.clientWidth + 'px;height:' + financeCanvas.clientHeight + 'px;display:block;';
+    // Swap chart canvases → static images (no visual change)
+    var swap1 = stageBox.replaceChild(sImg, stageCanvas);
+    var swap2 = financeBox.replaceChild(fImg, financeCanvas);
+
+    // Give browser a frame to paint
+    await new Promise(function(r) { requestAnimationFrame(function() { requestAnimationFrame(r); }); });
 
     var container = document.querySelector('.container');
-    var stageWrap = stageCanvas.parentElement;
-    var financeWrap = financeCanvas.parentElement;
-    var stageCanvasEl = stageCanvas;
-    var financeCanvasEl = financeCanvas;
-
-    const canvas = await html2canvas(container, {
-      backgroundColor: '#f0f2f5',
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      allowTaint: true,
-      onclone: function(clonedDoc) {
-        // Replace chart canvases in the clone with static images
-        var cStage = clonedDoc.getElementById('chartStage');
-        var cFinance = clonedDoc.getElementById('chartFinance');
-        if (cStage && cStage.parentElement) {
-          var ci = clonedDoc.createElement('img');
-          ci.src = stageImg.src;
-          ci.style.cssText = stageImg.style.cssText;
-          cStage.parentElement.replaceChild(ci, cStage);
-        }
-        if (cFinance && cFinance.parentElement) {
-          var ci2 = clonedDoc.createElement('img');
-          ci2.src = financeImg.src;
-          ci2.style.cssText = financeImg.style.cssText;
-          cFinance.parentElement.replaceChild(ci2, cFinance);
-        }
-        // Show both tabs
-        var cp = clonedDoc.getElementById('tab-pipeline');
-        var cc = clonedDoc.getElementById('tab-clients');
-        if (cp) { cp.style.display = 'block'; cp.classList.add('active'); }
-        if (cc) { cc.style.display = 'block'; cc.classList.add('active'); cc.style.marginTop = '20px'; }
-        var c = clonedDoc.querySelector('.container');
-        if (c) { c.style.maxWidth = 'none'; c.style.overflow = 'visible'; }
-      }
+    var canvas = await html2canvas(container, {
+      backgroundColor: '#f0f2f5', scale: 2, useCORS: true, logging: false, allowTaint: true,
+      width: container.scrollWidth,
+      windowWidth: container.scrollWidth
     });
 
-    // Compose final image with header bar
-    var headerH = 48;
-    var fullCanvas = document.createElement('canvas');
-    fullCanvas.width = canvas.width;
-    fullCanvas.height = canvas.height + headerH + 10;
-    var ctx = fullCanvas.getContext('2d');
+    // Restore everything
+    stageBox.replaceChild(swap1, sImg);
+    financeBox.replaceChild(swap2, fImg);
+    chartStage = swap1;
+    chartFinance = swap2;
+
+    tabPipeline.style.display = '';
+    tabClients.style.display = '';
+    tabClients.style.marginTop = '';
+    tabPipeline.classList.toggle('active', wasPipe);
+    tabClients.classList.toggle('active', wasCli);
+
+    // Header bar
+    var hh = 48;
+    var full = document.createElement('canvas');
+    full.width = canvas.width;
+    full.height = canvas.height + hh + 10;
+    var ctx = full.getContext('2d');
     ctx.fillStyle = '#1a1a2e';
-    ctx.fillRect(0, 0, fullCanvas.width, headerH);
+    ctx.fillRect(0, 0, full.width, hh);
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 20px "Microsoft YaHei"';
     ctx.textAlign = 'center';
-    ctx.fillText('海南驻点销售管理看板 - 广州赛通科技', fullCanvas.width / 2, 32);
-    ctx.drawImage(canvas, 0, headerH + 10);
+    ctx.fillText('海南驻点销售管理看板 - 广州赛通科技', full.width / 2, 32);
+    ctx.drawImage(canvas, 0, hh + 10);
 
-    var blob = await new Promise(function(resolve) { fullCanvas.toBlob(resolve, 'image/png'); });
+    var blob = await new Promise(function(resolve) { full.toBlob(resolve, 'image/png'); });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
