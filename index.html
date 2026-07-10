@@ -1295,10 +1295,25 @@ async function exportShareVersion() {
   showToast('📸 正在生成截图，请稍候...');
 
   try {
-    // Capture the ENTIRE container — KPI cards, charts, AND both tables
-    const container = document.querySelector('.container');
+    // Make BOTH tab contents visible at once for the screenshot
+    const tabPipeline = document.getElementById('tab-pipeline');
+    const tabClients = document.getElementById('tab-clients');
 
-    // Temporarily make everything visible and expand charts
+    // Store original display states
+    const wasPipelineVisible = tabPipeline.classList.contains('active');
+    const wasClientsVisible = tabClients.classList.contains('active');
+
+    // Force both to display:block, stack vertically
+    tabPipeline.style.display = 'block';
+    tabPipeline.classList.add('active');
+    tabClients.style.display = 'block';
+    tabClients.classList.add('active');
+    // Add a gap between them
+    tabClients.style.marginTop = '20px';
+
+    await new Promise(r => setTimeout(r, 400));
+
+    const container = document.querySelector('.container');
     container.style.maxWidth = 'none';
     container.style.overflow = 'visible';
 
@@ -1313,9 +1328,14 @@ async function exportShareVersion() {
       windowHeight: container.scrollHeight + 80
     });
 
-    // Restore
+    // Restore original state
     container.style.maxWidth = '';
     container.style.overflow = '';
+    tabPipeline.style.display = '';
+    tabClients.style.display = '';
+    tabClients.style.marginTop = '';
+    if (!wasPipelineVisible) tabPipeline.classList.remove('active');
+    if (!wasClientsVisible) tabClients.classList.remove('active');
 
     // Add title bar on top
     const headerH = 48;
@@ -1346,7 +1366,9 @@ async function exportShareVersion() {
     console.error(err);
     alert('截图生成失败：' + err.message);
   } finally {
-    if (currentTab) currentTab.click();
+    // Restore the original active tab
+    tabPipeline.classList.toggle('active', wasPipelineVisible);
+    tabClients.classList.toggle('active', wasClientsVisible);
   }
 }
 
