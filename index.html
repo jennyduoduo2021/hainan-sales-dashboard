@@ -44,7 +44,7 @@ body { font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; background: var(-
 .chart-card { background: var(--card); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow); }
 .chart-card h3 { font-size: 14px; color: var(--text2); margin-bottom: 12px; font-weight: 500; }
 .chart-wrap { position: relative; height: 320px; }
-.chart-wrap canvas { width: 100% !important; height: 100% !important; }
+.chart-wrap canvas, .chart-wrap img { width: 100% !important; height: 100% !important; }
 /* Tabs */
 .tabs { display: flex; gap: 2px; margin-bottom: 0; }
 .tab { padding: 10px 20px; background: #e5e7eb; border: none; cursor: pointer; font-size: 13px; font-weight: 500; border-radius: 8px 8px 0 0; transition: .2s; }
@@ -1306,20 +1306,17 @@ async function exportShareVersion() {
   var wasCli = tabClients.classList.contains('active');
 
   // Capture chart canvases to Image elements (ensure they're loaded)
-  function canvasToImage(canvas, w, h) {
+  function canvasToImage(canvas) {
     return new Promise(function(resolve) {
       var img = new Image();
       img.onload = function() { resolve(img); };
       img.onerror = function() { resolve(null); };
       img.src = canvas.toDataURL('image/png');
-      img.style.width = w + 'px';
-      img.style.height = h + 'px';
-      img.style.display = 'block';
     });
   }
 
-  var sImg = await canvasToImage(stageCanvas, stageCanvas.offsetWidth, stageCanvas.offsetHeight);
-  var fImg = await canvasToImage(financeCanvas, financeCanvas.offsetWidth, financeCanvas.offsetHeight);
+  var sImg = await canvasToImage(stageCanvas);
+  var fImg = await canvasToImage(financeCanvas);
 
   // Swap live canvases with loaded static images
   if (sImg) { sImg.style.cssText = 'width:100% !important;height:100% !important;display:block;'; stageCanvas.parentNode.replaceChild(sImg, stageCanvas); }
