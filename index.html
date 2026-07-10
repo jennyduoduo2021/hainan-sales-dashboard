@@ -1298,60 +1298,41 @@ async function exportShareVersion() {
 
   var tabPipeline = document.getElementById('tab-pipeline');
   var tabClients = document.getElementById('tab-clients');
-  var stageCanvas = document.getElementById('chartStage');
-  var financeCanvas = document.getElementById('chartFinance');
-  var stageBox = stageCanvas.parentElement;
-  var financeBox = financeCanvas.parentElement;
-  var stageW = stageCanvas.clientWidth;
-  var stageH = stageCanvas.clientHeight;
-  var finW = financeCanvas.clientWidth;
-  var finH = financeCanvas.clientHeight;
+  var container = document.querySelector('.container');
 
-  // Snapshot charts as identical-looking static images
-  var sImg = document.createElement('img');
-  var fImg = document.createElement('img');
-  sImg.src = stageCanvas.toDataURL('image/png');
-  fImg.src = financeCanvas.toDataURL('image/png');
-  sImg.style.cssText = 'width:' + stageW + 'px;height:' + stageH + 'px;display:block;';
-  fImg.style.cssText = 'width:' + finW + 'px;height:' + finH + 'px;display:block;';
-
-  // Show both tabs
   var wasPipe = tabPipeline.classList.contains('active');
   var wasCli = tabClients.classList.contains('active');
+
+  // Temporarily show both tabs so html2canvas captures everything
   tabPipeline.style.display = 'block';
   tabPipeline.classList.add('active');
   tabClients.style.display = 'block';
   tabClients.classList.add('active');
   tabClients.style.marginTop = '20px';
 
+  // Wait for layout to settle
+  await new Promise(function(r) { setTimeout(r, 300); });
+
   try {
-    // Swap chart canvases → static images (no visual change)
-    var swap1 = stageBox.replaceChild(sImg, stageCanvas);
-    var swap2 = financeBox.replaceChild(fImg, financeCanvas);
-
-    // Give browser a frame to paint
-    await new Promise(function(r) { requestAnimationFrame(function() { requestAnimationFrame(r); }); });
-
-    var container = document.querySelector('.container');
+    // Capture current page as-is (charts are live canvas, html2canvas handles them)
     var canvas = await html2canvas(container, {
-      backgroundColor: '#f0f2f5', scale: 2, useCORS: true, logging: false, allowTaint: true,
+      backgroundColor: '#f0f2f5',
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      allowTaint: true,
       width: container.scrollWidth,
       windowWidth: container.scrollWidth
     });
 
-    // Restore everything
-    stageBox.replaceChild(swap1, sImg);
-    financeBox.replaceChild(swap2, fImg);
-    chartStage = swap1;
-    chartFinance = swap2;
-
+    // Restore tabs
     tabPipeline.style.display = '';
     tabClients.style.display = '';
     tabClients.style.marginTop = '';
     tabPipeline.classList.toggle('active', wasPipe);
     tabClients.classList.toggle('active', wasCli);
 
-    // Header bar
+    // Add title bar
     var hh = 48;
     var full = document.createElement('canvas');
     full.width = canvas.width;
@@ -1365,7 +1346,7 @@ async function exportShareVersion() {
     ctx.fillText('海南驻点销售管理看板 - 广州赛通科技', full.width / 2, 32);
     ctx.drawImage(canvas, 0, hh + 10);
 
-    var blob = await new Promise(function(resolve) { full.toBlob(resolve, 'image/png'); });
+    var blob = await new Promise(function(r) { full.toBlob(r, 'image/png'); });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
@@ -1375,6 +1356,12 @@ async function exportShareVersion() {
 
     showToast('📸 截图已导出！');
   } catch(err) {
+    // Restore on error too
+    tabPipeline.style.display = '';
+    tabClients.style.display = '';
+    tabClients.style.marginTop = '';
+    tabPipeline.classList.toggle('active', wasPipe);
+    tabClients.classList.toggle('active', wasCli);
     console.error(err);
     alert('截图生成失败：' + err.message);
   }
