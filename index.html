@@ -339,7 +339,9 @@ function loadData() {
   // 1. Try cloud data first (from repo data.json)
   if (GITEE_TOKEN) {
     pullFromCloud().then(() => {
-      renderAll();
+      renderPipeline();
+      renderClients();
+      refreshDashboard();
     });
   }
   // 2. Fallback: localStorage
@@ -1295,7 +1297,22 @@ async function exportShareVersion() {
   showToast('📸 正在生成截图，请稍候...');
 
   try {
-    const container = document.querySelector('.container');
+    // Convert live Chart.js canvases to static images first so they survive cloning
+    var stageCanvas = document.getElementById('chartStage');
+    var financeCanvas = document.getElementById('chartFinance');
+    var stageImg = document.createElement('img');
+    var financeImg = document.createElement('img');
+    stageImg.src = stageCanvas.toDataURL('image/png');
+    financeImg.src = financeCanvas.toDataURL('image/png');
+    stageImg.style.cssText = 'width:' + stageCanvas.clientWidth + 'px;height:' + stageCanvas.clientHeight + 'px;display:block;';
+    financeImg.style.cssText = 'width:' + financeCanvas.clientWidth + 'px;height:' + financeCanvas.clientHeight + 'px;display:block;';
+
+    var container = document.querySelector('.container');
+    var stageWrap = stageCanvas.parentElement;
+    var financeWrap = financeCanvas.parentElement;
+    var stageCanvasEl = stageCanvas;
+    var financeCanvasEl = financeCanvas;
+
     const canvas = await html2canvas(container, {
       backgroundColor: '#f0f2f5',
       scale: 2,
@@ -1303,11 +1320,27 @@ async function exportShareVersion() {
       logging: false,
       allowTaint: true,
       onclone: function(clonedDoc) {
-        const cp = clonedDoc.getElementById('tab-pipeline');
-        const cc = clonedDoc.getElementById('tab-clients');
+        // Replace chart canvases in the clone with static images
+        var cStage = clonedDoc.getElementById('chartStage');
+        var cFinance = clonedDoc.getElementById('chartFinance');
+        if (cStage && cStage.parentElement) {
+          var ci = clonedDoc.createElement('img');
+          ci.src = stageImg.src;
+          ci.style.cssText = stageImg.style.cssText;
+          cStage.parentElement.replaceChild(ci, cStage);
+        }
+        if (cFinance && cFinance.parentElement) {
+          var ci2 = clonedDoc.createElement('img');
+          ci2.src = financeImg.src;
+          ci2.style.cssText = financeImg.style.cssText;
+          cFinance.parentElement.replaceChild(ci2, cFinance);
+        }
+        // Show both tabs
+        var cp = clonedDoc.getElementById('tab-pipeline');
+        var cc = clonedDoc.getElementById('tab-clients');
         if (cp) { cp.style.display = 'block'; cp.classList.add('active'); }
         if (cc) { cc.style.display = 'block'; cc.classList.add('active'); cc.style.marginTop = '20px'; }
-        const c = clonedDoc.querySelector('.container');
+        var c = clonedDoc.querySelector('.container');
         if (c) { c.style.maxWidth = 'none'; c.style.overflow = 'visible'; }
       }
     });
@@ -1483,7 +1516,6 @@ updateCloudStatusUI();
 loadData();
 renderPipeline();
 renderClients();
-refreshDashboard();
 refreshDashboard();
 
 // Auto-save every 30s
