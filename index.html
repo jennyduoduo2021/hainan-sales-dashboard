@@ -1321,11 +1321,30 @@ async function exportShareVersion() {
       cf.parentNode.replaceChild(img2, cf);
     }
 
-    // 3. 显示两个选项卡
+    // 3. 显示两个选项卡，移除表格中所有限制宽度的样式
     var tp = clone.querySelector('#tab-pipeline');
     var tc = clone.querySelector('#tab-clients');
     if (tp) { tp.style.display = 'block'; tp.classList.add('active'); }
     if (tc) { tc.style.display = 'block'; tc.classList.add('active'); tc.style.marginTop = '20px'; }
+
+    // 移除克隆中所有表格单元格的 max-width / white-space: nowrap 限制
+    clone.querySelectorAll('td, th').forEach(function(cell) {
+      cell.style.maxWidth = 'none';
+      cell.style.minWidth = 'auto';
+      cell.style.whiteSpace = 'normal';
+      cell.style.wordBreak = 'break-all';
+    });
+    clone.querySelectorAll('.badge, select, .badge-wrap, .tag').forEach(function(el) {
+      el.style.whiteSpace = 'normal';
+    });
+    clone.querySelectorAll('td select').forEach(function(s) {
+      s.style.minWidth = 'auto';
+      s.style.maxWidth = 'none';
+    });
+    clone.querySelectorAll('.followup-cell, .note-cell, .num-col, .num-header').forEach(function(c) {
+      c.style.maxWidth = 'none';
+      c.style.minWidth = 'auto';
+    });
 
     // 4. 计算表格需要的实际宽度
     var tables = clone.querySelectorAll('table');
