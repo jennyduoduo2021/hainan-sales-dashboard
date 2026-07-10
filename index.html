@@ -1296,40 +1296,11 @@ async function exportShareVersion() {
 
   showToast('📸 正在生成截图，请稍候...');
 
-  // References we need throughout
-  var tabPipeline = document.getElementById('tab-pipeline');
-  var tabClients = document.getElementById('tab-clients');
-  var stageCanvas = document.getElementById('chartStage');
-  var financeCanvas = document.getElementById('chartFinance');
   var container = document.querySelector('.container');
-  var wasPipe = tabPipeline.classList.contains('active');
-  var wasCli = tabClients.classList.contains('active');
 
-  // Capture chart canvases to Image elements (ensure they're loaded)
-  function canvasToImage(canvas) {
-    return new Promise(function(resolve) {
-      var img = new Image();
-      img.onload = function() { resolve(img); };
-      img.onerror = function() { resolve(null); };
-      img.src = canvas.toDataURL('image/png');
-    });
-  }
-
-  var sImg = await canvasToImage(stageCanvas);
-  var fImg = await canvasToImage(financeCanvas);
-
-  // Swap live canvases with loaded static images
-  if (sImg) { sImg.style.cssText = 'width:100% !important;height:100% !important;display:block;'; stageCanvas.parentNode.replaceChild(sImg, stageCanvas); }
-  if (fImg) { fImg.style.cssText = 'width:100% !important;height:100% !important;display:block;'; financeCanvas.parentNode.replaceChild(fImg, financeCanvas); }
-
-  // Show both tabs
-  tabPipeline.style.display = 'block';
-  tabPipeline.classList.add('active');
-  tabClients.style.display = 'block';
-  tabClients.classList.add('active');
-  tabClients.style.marginTop = '20px';
-
-  await new Promise(function(r) { setTimeout(r, 200); });
+  // Pre-capture chart dataURLs — these survive the clone
+  var stageData = document.getElementById('chartStage').toDataURL('image/png');
+  var financeData = document.getElementById('chartFinance').toDataURL('image/png');
 
   try {
     var resultCanvas = await html2canvas(container, {
@@ -1337,7 +1308,22 @@ async function exportShareVersion() {
       scale: 2,
       useCORS: true,
       logging: false,
-      allowTaint: true
+      allowTaint: true,
+      onclone: function(clonedDoc) {
+        // 1. Restore chart canvases from dataURLs in the clone
+        var cs = clonedDoc.getElementById('chartStage');
+        var cf = clonedDoc.getElementById('chartFinance');
+        restoreCanvas(clonedDoc, cs, stageData);
+        restoreCanvas(clonedDoc, cf, financeData);
+
+        // 2. Show both tabs in the clone
+        var cp = clonedDoc.getElementById('tab-pipeline');
+        var cc = clonedDoc.getElementById('tab-clients');
+        if (cp) { cp.style.display = 'block'; cp.classList.add('active'); }
+        if (cc) { cc.style.display = 'block'; cc.classList.add('active'); cc.style.marginTop = '20px'; }
+        var ct = clonedDoc.querySelector('.container');
+        if (ct) { ct.style.maxWidth = 'none'; ct.style.overflow = 'visible'; }
+      }
     });
 
     // Title bar
@@ -1362,15 +1348,30 @@ async function exportShareVersion() {
     a.click();
     URL.revokeObjectURL(url);
     showToast('📸 截图已导出！');
-  } finally {
-    // Restore
-    if (sImg) sImg.parentNode.replaceChild(stageCanvas, sImg);
-    if (fImg) fImg.parentNode.replaceChild(financeCanvas, fImg);
-    tabPipeline.style.display = '';
-    tabClients.style.display = '';
-    tabClients.style.marginTop = '';
-    tabPipeline.classList.toggle('active', wasPipe);
-    tabClients.classList.toggle('active', wasCli);
+  } catch(err) {
+    console.error(err);
+    alert('截图生成失败：' + err.message);
+  }
+}
+
+// Helper: draw a dataURL image onto a cloned canvas element
+function restoreCanvas(clonedDoc, clonedCanvas, dataURL) {
+  if (!clonedCanvas) return;
+  var ctx = clonedCanvas.getContext('2d');
+  var img = clonedDoc.createElement('img');
+  img.src = dataURL;
+  img.onload = function() {
+    clonedCanvas.width = img.naturalWidth;
+    clonedCanvas.height = img.naturalHeight;
+    ctx.drawImage(img, 0, 0);
+  };
+  // Sync draw — use Image from parent window
+  var winImg = new Image();
+  winImg.src = dataURL;
+  if (winImg.complete) {
+    clonedCanvas.width = winImg.naturalWidth;
+    clonedCanvas.height = winImg.naturalHeight;
+    ctx.drawImage(winImg, 0, 0);
   }
 }
 
