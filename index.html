@@ -1295,71 +1295,41 @@ async function exportShareVersion() {
   showToast('📸 正在生成截图，请稍候...');
 
   try {
-    // Pipeline screenshot — capture the FULL table element directly
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    document.querySelector('.tab').classList.add('active');
-    document.getElementById('tab-pipeline').classList.add('active');
+    // Capture the ENTIRE container — KPI cards, charts, AND both tables
+    const container = document.querySelector('.container');
 
-    await new Promise(r => setTimeout(r, 500));
+    // Temporarily make everything visible and expand charts
+    container.style.maxWidth = 'none';
+    container.style.overflow = 'visible';
 
-    const pipelineTable = document.getElementById('tbl-pipeline');
-    const pipelineCanvas = await html2canvas(document.getElementById('tab-pipeline'), {
-      backgroundColor: '#ffffff',
+    const canvas = await html2canvas(container, {
+      backgroundColor: '#f0f2f5',
       scale: 2,
       useCORS: true,
       logging: false,
-      width: pipelineTable.scrollWidth + 40,
-      height: pipelineTable.scrollHeight + 200,
-      windowWidth: pipelineTable.scrollWidth + 100,
-      windowHeight: pipelineTable.scrollHeight + 400
+      width: container.scrollWidth + 40,
+      height: container.scrollHeight + 60,
+      windowWidth: container.scrollWidth + 60,
+      windowHeight: container.scrollHeight + 80
     });
 
-    // Clients screenshot — capture the FULL table
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    document.querySelectorAll('.tab')[1].classList.add('active');
-    document.getElementById('tab-clients').classList.add('active');
+    // Restore
+    container.style.maxWidth = '';
+    container.style.overflow = '';
 
-    await new Promise(r => setTimeout(r, 300));
-
-    const clientsTable = document.getElementById('tbl-clients');
-    const clientsCanvas = await html2canvas(document.getElementById('tab-clients'), {
-      backgroundColor: '#ffffff',
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      width: clientsTable.scrollWidth + 40,
-      height: clientsTable.scrollHeight + 200,
-      windowWidth: clientsTable.scrollWidth + 100,
-      windowHeight: clientsTable.scrollHeight + 400
-    });
-
-    // Stitch vertically
-    const gap = 20;
-    const maxWidth = Math.max(pipelineCanvas.width, clientsCanvas.width);
-    const totalHeight = pipelineCanvas.height + clientsCanvas.height + gap + 60;
+    // Add title bar on top
+    const headerH = 48;
     const fullCanvas = document.createElement('canvas');
-    fullCanvas.width = maxWidth;
-    fullCanvas.height = totalHeight;
+    fullCanvas.width = canvas.width;
+    fullCanvas.height = canvas.height + headerH + 10;
     const ctx = fullCanvas.getContext('2d');
-    ctx.fillStyle = '#f0f2f5';
-    ctx.fillRect(0, 0, fullCanvas.width, fullCanvas.height);
-
-    // Title bar
     ctx.fillStyle = '#1a1a2e';
-    ctx.fillRect(0, 0, maxWidth, 44);
+    ctx.fillRect(0, 0, fullCanvas.width, headerH);
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 18px "Microsoft YaHei"';
+    ctx.font = 'bold 20px "Microsoft YaHei"';
     ctx.textAlign = 'center';
-    ctx.fillText('海南驻点销售管理看板 - 广州赛通科技', maxWidth / 2, 30);
-
-    let y = 52;
-    const xP = Math.floor((maxWidth - pipelineCanvas.width) / 2);
-    ctx.drawImage(pipelineCanvas, xP, y);
-    y += pipelineCanvas.height + gap;
-    const xC = Math.floor((maxWidth - clientsCanvas.width) / 2);
-    ctx.drawImage(clientsCanvas, xC, y);
+    ctx.fillText('海南驻点销售管理看板 - 广州赛通科技', fullCanvas.width / 2, 32);
+    ctx.drawImage(canvas, 0, headerH + 10);
 
     // Download
     const blob = await new Promise(resolve => fullCanvas.toBlob(resolve, 'image/png'));
