@@ -1293,74 +1293,65 @@ async function exportShareVersion() {
   syncTableToData();
   syncClientsToData();
 
-  // 1. 立即从当前页面图表canvas中提取图片数据
+  showToast('📸 正在生成截图，请稍候...');
+
+  // 1. 提取页面图表像素数据
   var c1 = document.getElementById('chartStage');
   var c2 = document.getElementById('chartFinance');
   var sDataUrl = c1.toDataURL('image/png');
   var fDataUrl = c2.toDataURL('image/png');
+  var c1w = c1.width, c1h = c1.height;
+  var c2w = c2.width, c2h = c2.height;
 
-  showToast('📸 正在生成截图，请稍候...');
+  // 2. 预创建Image元素并等待解码
+  var sImg = new Image(), fImg = new Image();
+  sImg.src = sDataUrl; fImg.src = fDataUrl;
+  try { await sImg.decode(); await fImg.decode(); } catch(e) {}
+
+  var container = document.querySelector('.container');
 
   try {
-    var container = document.querySelector('.container');
-    var clone = container.cloneNode(true);
-
-    // 2. 替换图表canvas为静态图片
-    var cs = clone.querySelector('#chartStage');
-    var cf = clone.querySelector('#chartFinance');
-    if (cs && cs.parentNode) {
-      var img1 = document.createElement('img');
-      img1.src = sDataUrl;
-      img1.style.cssText = 'width:100%;height:100%;display:block;';
-      cs.parentNode.replaceChild(img1, cs);
-    }
-    if (cf && cf.parentNode) {
-      var img2 = document.createElement('img');
-      img2.src = fDataUrl;
-      img2.style.cssText = 'width:100%;height:100%;display:block;';
-      cf.parentNode.replaceChild(img2, cf);
-    }
-
-    // 3. 显示两个选项卡
-    var tp = clone.querySelector('#tab-pipeline');
-    var tc = clone.querySelector('#tab-clients');
-    if (tp) { tp.style.display = 'block'; tp.classList.add('active'); }
-    if (tc) { tc.style.display = 'block'; tc.classList.add('active'); tc.style.marginTop = '20px'; }
-
-    // 注入样式表覆盖克隆中所有列宽/截断限制
-    var style = document.createElement('style');
-    style.textContent = [
-      '.container { max-width: none !important; width: auto !important; }',
-      'td, th { max-width: none !important; min-width: auto !important; white-space: normal !important; word-break: break-word !important; }',
-      '.followup-cell, .note-cell { max-width: none !important; min-width: auto !important; }',
-      '.num-col, .num-header { max-width: none !important; min-width: auto !important; }',
-      'td select { max-width: none !important; min-width: auto !important; }',
-      '.badge, .badge-wrap, select, .tag { white-space: normal !important; }',
-      'table { table-layout: auto !important; width: max-content !important; min-width: 100% !important; }',
-      'thead { position: static !important; }'
-    ].join('\n');
-    clone.insertBefore(style, clone.firstChild);
-
-    // 4. 放到屏幕外渲染（给足宽度让表格自然展开）
-    clone.style.cssText = 'position:absolute;left:-9999px;top:0;z-index:1;max-width:none;width:' + Math.max(container.scrollWidth + 400, 2400) + 'px;';
-    clone.style.padding = '20px 24px';
-    document.body.appendChild(clone);
-
-    // 等布局完成
-    await new Promise(function(r) { setTimeout(r, 300); });
-
-    // 6. 截图
-    var result = await html2canvas(clone, {
+    var result = await html2canvas(container, {
       backgroundColor: '#f0f2f5',
       scale: 2,
       useCORS: true,
       allowTaint: true,
-      logging: false
+      logging: false,
+      windowWidth: Math.max(container.scrollWidth + 400, 2400),
+      windowHeight: container.scrollHeight + 2000,
+      onclone: function(clonedDoc) {
+        // A. 修复克隆canvas尺寸并用已解码图片像素填充
+        var ccs = clonedDoc.getElementById('chartStage');
+        var ccf = clonedDoc.getElementById('chartFinance');
+        if (ccs) {
+          ccs.width = c1w;
+          ccs.height = c1h;
+          ccs.getContext('2d').drawImage(sImg, 0, 0);
+          ccs.style.width = '100%';
+          ccs.style.height = '100%';
+        }
+        if (ccf) {
+          ccf.width = c2w;
+          ccf.height = c2h;
+          ccf.getContext('2d').drawImage(fImg, 0, 0);
+          ccf.style.width = '100%';
+          ccf.style.height = '100%';
+        }
+
+        // B. 显示两个选项卡
+        var tp = clonedDoc.getElementById('tab-pipeline');
+        var tc = clonedDoc.getElementById('tab-clients');
+        if (tp) { tp.style.display = 'block'; tp.classList.add('active'); }
+        if (tc) { tc.style.display = 'block'; tc.classList.add('active'); tc.style.marginTop = '20px'; }
+
+        // C. 注入覆盖样式（更强的!important）
+        var style = clonedDoc.createElement('style');
+        style.textContent = '.container{max-width:none!important;width:auto!important}td,th{max-width:none!important;white-space:normal!important;overflow:visible!important}.followup-cell,.note-cell{max-width:none!important;min-width:200px!important}.num-col,.num-header{max-width:none!important;min-width:80px!important}table{table-layout:auto!important;width:auto!important}thead{position:static!important}.badge,select{white-space:nowrap!important;overflow:visible!important}';
+        clonedDoc.head.appendChild(style);
+      }
     });
 
-    document.body.removeChild(clone);
-
-    // 7. 添加标题栏
+    // 3. 添加标题栏
     var hh = 48;
     var full = document.createElement('canvas');
     full.width = result.width;
@@ -1383,8 +1374,6 @@ async function exportShareVersion() {
 
     showToast('📸 截图已导出！');
   } catch(err) {
-    var temp = document.querySelector('body > div[style*="absolute"]');
-    if (temp) document.body.removeChild(temp);
     console.error(err);
     alert('导出失败：' + err.message);
   }
