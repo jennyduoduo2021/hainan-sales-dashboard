@@ -1290,65 +1290,68 @@ function switchTab(name) {
 }
 
 async function exportShareVersion() {
+  // 同步数据到JavaScript对象（不触发表格渲染、图表刷新）
   syncTableToData();
   syncClientsToData();
-  saveAll();
 
-  showToast('📸 正在生成截图，请稍候...');
-
+  // 1. 立即从当前页面图表canvas中提取图片数据（此时图表已经渲染好了）
   var c1 = document.getElementById('chartStage');
   var c2 = document.getElementById('chartFinance');
-
-  // Pre-render charts to images and fully decode them
   var sDataUrl = c1.toDataURL('image/png');
   var fDataUrl = c2.toDataURL('image/png');
 
-  var sImg = new Image();
-  var fImg = new Image();
-  sImg.src = sDataUrl;
-  fImg.src = fDataUrl;
-  try { await sImg.decode(); await fImg.decode(); } catch(e) {}
-
-  showToast('📸 5秒后开始截图，请勿操作...');
-  await new Promise(function(r) { setTimeout(r, 5000); });
-
-  var original = document.querySelector('.container');
+  showToast('📸 正在生成截图，请稍候...');
 
   try {
-    var resultCanvas = await html2canvas(original, {
+    // 2. 克隆容器
+    var container = document.querySelector('.container');
+    var clone = container.cloneNode(true);
+
+    // 3. 在克隆中替换图表canvas为静态图片
+    var cs = clone.querySelector('#chartStage');
+    var cf = clone.querySelector('#chartFinance');
+    if (cs && cs.parentNode) {
+      var img1 = document.createElement('img');
+      img1.src = sDataUrl;
+      img1.style.cssText = 'width:100%;height:100%;display:block;';
+      cs.parentNode.replaceChild(img1, cs);
+    }
+    if (cf && cf.parentNode) {
+      var img2 = document.createElement('img');
+      img2.src = fDataUrl;
+      img2.style.cssText = 'width:100%;height:100%;display:block;';
+      cf.parentNode.replaceChild(img2, cf);
+    }
+
+    // 4. 显示两个选项卡
+    var tp = clone.querySelector('#tab-pipeline');
+    var tc = clone.querySelector('#tab-clients');
+    if (tp) { tp.style.display = 'block'; tp.classList.add('active'); }
+    if (tc) { tc.style.display = 'block'; tc.classList.add('active'); tc.style.marginTop = '20px'; }
+
+    // 5. 放到屏幕外渲染
+    clone.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:1;max-width:none;width:' + container.scrollWidth + 'px;';
+    document.body.appendChild(clone);
+
+    // 稍等让浏览器完成布局
+    await new Promise(r => setTimeout(r, 300));
+
+    // 6. 截图
+    var result = await html2canvas(clone, {
       backgroundColor: '#f0f2f5',
       scale: 2,
       useCORS: true,
-      logging: false,
       allowTaint: true,
-      onclone: function(clonedDoc) {
-        // Show both tabs in the clone
-        var cp = clonedDoc.getElementById('tab-pipeline');
-        var cc = clonedDoc.getElementById('tab-clients');
-        if (cp) { cp.style.display = 'block'; cp.classList.add('active'); }
-        if (cc) { cc.style.display = 'block'; cc.classList.add('active'); cc.style.marginTop = '20px'; }
-
-        // Draw pre-loaded chart images onto cloned canvases
-        var cs = clonedDoc.getElementById('chartStage');
-        var cf = clonedDoc.getElementById('chartFinance');
-        if (cs) {
-          cs.width = sImg.naturalWidth;
-          cs.height = sImg.naturalHeight;
-          cs.getContext('2d').drawImage(sImg, 0, 0);
-        }
-        if (cf) {
-          cf.width = fImg.naturalWidth;
-          cf.height = fImg.naturalHeight;
-          cf.getContext('2d').drawImage(fImg, 0, 0);
-        }
-      }
+      logging: false
     });
 
-    // Title bar
+    document.body.removeChild(clone);
+
+    // 7. 添加标题栏
     var hh = 48;
     var full = document.createElement('canvas');
-    full.width = resultCanvas.width;
-    full.height = resultCanvas.height + hh + 10;
+    full.width = result.width;
+    full.height = result.height + hh + 10;
     var ctx = full.getContext('2d');
     ctx.fillStyle = '#1a1a2e';
     ctx.fillRect(0, 0, full.width, hh);
@@ -1356,17 +1359,19 @@ async function exportShareVersion() {
     ctx.font = 'bold 20px "Microsoft YaHei"';
     ctx.textAlign = 'center';
     ctx.fillText('海南驻点销售管理看板 - 广州赛通科技', full.width / 2, 32);
-    ctx.drawImage(resultCanvas, 0, hh + 10);
+    ctx.drawImage(result, 0, hh + 10);
 
-    var blob = await new Promise(function(r) { full.toBlob(r, 'image/png'); });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = '海南销售看板_' + new Date().toISOString().slice(0, 10) + '.png';
-    a.click();
-    URL.revokeObjectURL(url);
+    full.toBlob(function(blob) {
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = '海南销售看板_' + new Date().toISOString().slice(0,10) + '.png';
+      a.click(); URL.revokeObjectURL(url);
+    }, 'image/png');
+
     showToast('📸 截图已导出！');
   } catch(err) {
+    var temp = document.querySelector('body > div[style*="fixed"]');
+    if (temp) document.body.removeChild(temp);
     console.error(err);
     alert('导出失败：' + err.message);
   }
