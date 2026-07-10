@@ -630,6 +630,9 @@ function calcReceivable(p) {
   const c = parseFloat(p.contract) || 0;
   const col = parseFloat(p.collected) || 0;
   const r = c - col;
+  // If both are zero/empty, show blank; if contract is zero, also blank
+  if (c === 0 && col === 0) return '';
+  if (c === 0) return '';
   return r > 0 ? r.toFixed(1) : (c > 0 ? '0' : '');
 }
 
@@ -1198,7 +1201,7 @@ function updateCharts(fea, des, bid, win, qte, ctr, imp, acc, done, lost, tC, tC
       maintainAspectRatio: false,
       plugins: { legend: { display: false } },
       scales: {
-        y: { beginAtZero: true, ticks: { callback: v => v + ' 万' } }
+        y: { beginAtZero: true, grace: '10%', ticks: { callback: v => v.toFixed(1) + ' 万' } }
       }
     },
     plugins: [{
