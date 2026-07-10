@@ -1309,6 +1309,9 @@ async function exportShareVersion() {
   fImg.src = fDataUrl;
   try { await sImg.decode(); await fImg.decode(); } catch(e) {}
 
+  showToast('📸 5秒后开始截图，请勿操作...');
+  await new Promise(function(r) { setTimeout(r, 5000); });
+
   var original = document.querySelector('.container');
 
   try {
