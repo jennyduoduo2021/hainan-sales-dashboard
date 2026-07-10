@@ -55,8 +55,7 @@ body { font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; background: var(-
 /* Tables */
 .toolbar { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); gap: 12px; flex-wrap: wrap; }
 .toolbar .info { font-size: 12px; color: var(--text2); }
-.table-wrap { overflow-x: auto; max-height: 500px; overflow-y: auto; transition: max-height .3s; }
-.table-wrap.expanded { max-height: none; overflow-y: visible; }
+.table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: auto; }
 thead { position: sticky; top: 0; z-index: 2; }
 th { background: var(--primary); color: #fff; padding: 8px 6px; text-align: left; font-weight: 500; white-space: normal; word-break: keep-all; line-height: 1.35; position: relative; vertical-align: top; }
@@ -191,7 +190,6 @@ td select { min-width: 88px; max-width: 110px; font-family: inherit; font-size: 
     <div class="toolbar">
       <span class="info">💡 双击单元格编辑 | 下拉框选择阶段和信心度 | 修改后自动计算财务数据</span>
       <div style="display:flex;gap:6px;">
-        <button class="btn" style="padding:5px 12px;font-size:11px;background:#0f3460;color:#fff;" onclick="toggleTableExpand('pipeline-table-wrap', this)">📐 展开全部</button>
         <button class="btn btn-red" style="padding:5px 12px;font-size:11px;" onclick="deleteProject()">🗑 删除选中行</button>
       </div>
     </div>
@@ -233,7 +231,6 @@ td select { min-width: 88px; max-width: 110px; font-family: inherit; font-size: 
     <div class="toolbar">
       <span class="info">💡 双击单元格编辑 | 客户类型用标签区分 | 下拉选择关系深度/活跃/潜力</span>
       <div style="display:flex;gap:6px;">
-        <button class="btn" style="padding:5px 12px;font-size:11px;background:#0f3460;color:#fff;" onclick="toggleTableExpand('clients-table-wrap', this)">📐 展开全部</button>
         <button class="btn btn-green" style="padding:5px 12px;font-size:11px;" onclick="addClient()">+ 新增客户</button>
         <button class="btn btn-red" style="padding:5px 12px;font-size:11px;" onclick="deleteClient()">🗑 删除客户</button>
       </div>
@@ -1279,12 +1276,6 @@ function toggleSelectAllClients(cb) {
   document.querySelectorAll('#tbl-clients .row-check-client').forEach(c => c.checked = cb.checked);
 }
 
-function toggleTableExpand(wrapId, btn) {
-  const el = document.getElementById(wrapId);
-  const expanded = el.classList.toggle('expanded');
-  btn.textContent = expanded ? '📐 收起' : '📐 展开全部';
-}
-
 function toggleSelectAll(cb) {
   document.querySelectorAll('#tbl-pipeline .row-check').forEach(c => c.checked = cb.checked);
 }
@@ -1302,14 +1293,6 @@ async function exportShareVersion() {
   saveAll();
 
   showToast('📸 正在生成截图，请稍候...');
-
-  // Expand all tables and remove max-height to capture full content
-  const pipelineWrap = document.getElementById('pipeline-table-wrap');
-  const clientsWrap = document.getElementById('clients-table-wrap');
-  const wasExpandedP = pipelineWrap.classList.contains('expanded');
-  const wasExpandedC = clientsWrap.classList.contains('expanded');
-  pipelineWrap.classList.add('expanded');
-  clientsWrap.classList.add('expanded');
 
   try {
     // Pipeline screenshot — capture the FULL table element directly
@@ -1387,9 +1370,6 @@ async function exportShareVersion() {
     console.error(err);
     alert('截图生成失败：' + err.message);
   } finally {
-    // Restore original state
-    if (!wasExpandedP) pipelineWrap.classList.remove('expanded');
-    if (!wasExpandedC) clientsWrap.classList.remove('expanded');
     if (currentTab) currentTab.click();
   }
 }
