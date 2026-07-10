@@ -1290,11 +1290,10 @@ function switchTab(name) {
 }
 
 async function exportShareVersion() {
-  // 同步数据到JavaScript对象（不触发表格渲染、图表刷新）
   syncTableToData();
   syncClientsToData();
 
-  // 1. 立即从当前页面图表canvas中提取图片数据（此时图表已经渲染好了）
+  // 1. 立即从当前页面图表canvas中提取图片数据
   var c1 = document.getElementById('chartStage');
   var c2 = document.getElementById('chartFinance');
   var sDataUrl = c1.toDataURL('image/png');
@@ -1303,11 +1302,10 @@ async function exportShareVersion() {
   showToast('📸 正在生成截图，请稍候...');
 
   try {
-    // 2. 克隆容器
     var container = document.querySelector('.container');
     var clone = container.cloneNode(true);
 
-    // 3. 在克隆中替换图表canvas为静态图片
+    // 2. 替换图表canvas为静态图片
     var cs = clone.querySelector('#chartStage');
     var cf = clone.querySelector('#chartFinance');
     if (cs && cs.parentNode) {
@@ -1323,18 +1321,24 @@ async function exportShareVersion() {
       cf.parentNode.replaceChild(img2, cf);
     }
 
-    // 4. 显示两个选项卡
+    // 3. 显示两个选项卡
     var tp = clone.querySelector('#tab-pipeline');
     var tc = clone.querySelector('#tab-clients');
     if (tp) { tp.style.display = 'block'; tp.classList.add('active'); }
     if (tc) { tc.style.display = 'block'; tc.classList.add('active'); tc.style.marginTop = '20px'; }
 
-    // 5. 放到屏幕外渲染
-    clone.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:1;max-width:none;width:' + container.scrollWidth + 'px;';
+    // 4. 计算表格需要的实际宽度
+    var tables = clone.querySelectorAll('table');
+    var tableWidth = 0;
+    tables.forEach(function(t) { tableWidth = Math.max(tableWidth, t.offsetWidth || t.scrollWidth || 0); });
+
+    // 5. 放到屏幕外渲染（用 absolute 避免 fixed 被视口裁剪）
+    clone.style.cssText = 'position:absolute;left:-9999px;top:0;z-index:1;max-width:none;width:' + Math.max(container.scrollWidth + 200, tableWidth + 60, 1800) + 'px;';
+    clone.style.padding = '20px 24px';
     document.body.appendChild(clone);
 
-    // 稍等让浏览器完成布局
-    await new Promise(r => setTimeout(r, 300));
+    // 等布局完成
+    await new Promise(function(r) { setTimeout(r, 300); });
 
     // 6. 截图
     var result = await html2canvas(clone, {
@@ -1370,7 +1374,7 @@ async function exportShareVersion() {
 
     showToast('📸 截图已导出！');
   } catch(err) {
-    var temp = document.querySelector('body > div[style*="fixed"]');
+    var temp = document.querySelector('body > div[style*="absolute"]');
     if (temp) document.body.removeChild(temp);
     console.error(err);
     alert('导出失败：' + err.message);
