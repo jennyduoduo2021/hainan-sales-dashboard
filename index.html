@@ -1294,74 +1294,47 @@ async function exportShareVersion() {
 
   showToast('📸 正在生成截图，请稍候...');
 
-  // Store references and original state BEFORE any changes
-  const tabPipeline = document.getElementById('tab-pipeline');
-  const tabClients = document.getElementById('tab-clients');
-  const container = document.querySelector('.container');
-  const wasPipelineActive = tabPipeline.classList.contains('active');
-  const wasClientsActive = tabClients.classList.contains('active');
-
   try {
-    // Force both tab contents visible at once, stacked vertically
-    tabPipeline.style.display = 'block';
-    tabPipeline.classList.add('active');
-    tabClients.style.display = 'block';
-    tabClients.classList.add('active');
-    tabClients.style.marginTop = '20px';
-
-    // Fix container width for consistent rendering
-    container.style.maxWidth = 'none';
-    container.style.width = Math.max(
-      tabPipeline.scrollWidth,
-      tabClients.scrollWidth,
-      container.scrollWidth
-    ) + 'px';
-
-    await new Promise(r => setTimeout(r, 500));
-
+    const container = document.querySelector('.container');
     const canvas = await html2canvas(container, {
       backgroundColor: '#f0f2f5',
       scale: 2,
       useCORS: true,
       logging: false,
-      allowTaint: true
+      allowTaint: true,
+      onclone: function(clonedDoc) {
+        const cp = clonedDoc.getElementById('tab-pipeline');
+        const cc = clonedDoc.getElementById('tab-clients');
+        if (cp) { cp.style.display = 'block'; cp.classList.add('active'); }
+        if (cc) { cc.style.display = 'block'; cc.classList.add('active'); cc.style.marginTop = '20px'; }
+        const c = clonedDoc.querySelector('.container');
+        if (c) { c.style.maxWidth = 'none'; c.style.overflow = 'visible'; }
+      }
     });
 
-    // Restore
-    container.style.maxWidth = '';
-    container.style.width = '';
-    container.style.overflow = '';
-    tabPipeline.style.display = '';
-    tabClients.style.display = '';
-    tabClients.style.marginTop = '';
-    tabPipeline.classList.toggle('active', wasPipelineActive);
-    tabClients.classList.toggle('active', wasClientsActive);
-
     // Compose final image with header bar
-    const headerH = 48;
-    const padding = 10;
-    const fullCanvas = document.createElement('canvas');
+    var headerH = 48;
+    var fullCanvas = document.createElement('canvas');
     fullCanvas.width = canvas.width;
-    fullCanvas.height = canvas.height + headerH + padding;
-    const ctx = fullCanvas.getContext('2d');
+    fullCanvas.height = canvas.height + headerH + 10;
+    var ctx = fullCanvas.getContext('2d');
     ctx.fillStyle = '#1a1a2e';
     ctx.fillRect(0, 0, fullCanvas.width, headerH);
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 20px "Microsoft YaHei"';
     ctx.textAlign = 'center';
     ctx.fillText('海南驻点销售管理看板 - 广州赛通科技', fullCanvas.width / 2, 32);
-    ctx.drawImage(canvas, 0, headerH + padding);
+    ctx.drawImage(canvas, 0, headerH + 10);
 
-    const blob = await new Promise(resolve => fullCanvas.toBlob(resolve, 'image/png'));
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    var blob = await new Promise(function(resolve) { fullCanvas.toBlob(resolve, 'image/png'); });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
     a.href = url;
     a.download = '海南销售看板_' + new Date().toISOString().slice(0, 10) + '.png';
     a.click();
     URL.revokeObjectURL(url);
 
-    showToast('📸 截图已导出，可直接发给同事！');
-
+    showToast('📸 截图已导出！');
   } catch(err) {
     console.error(err);
     alert('截图生成失败：' + err.message);
